@@ -978,15 +978,13 @@ export const StoryboardNode = memo(({ id, data, selected, width, height }: Story
       {typeof document !== 'undefined' && isExportPanelOpen && createPortal(
         <div
           ref={exportSettingsPanelRef}
-          className={`fixed z-[120] w-[340px] transform-gpu transition-all duration-200 ease-out ${isExportPanelVisible ? 'opacity-100' : 'pointer-events-none opacity-0'
+          className={`fixed z-[120] w-[340px] transition-opacity duration-200 ease-out ${isExportPanelVisible ? 'opacity-100' : 'pointer-events-none opacity-0'
             }`}
           style={exportPanelAnchor
             ? {
               left: exportPanelAnchor.left,
               top: exportPanelAnchor.top,
-              transform: isExportPanelVisible
-                ? 'translateX(-50%) translateY(-100%) scale(1)'
-                : 'translateX(-50%) translateY(calc(-100% + 8px)) scale(0.95)',
+              transform: 'translateX(-50%) translateY(-100%)',
             }
             : undefined}
           onMouseDown={(event) => event.stopPropagation()}

@@ -3,7 +3,9 @@ import { X, Eye, EyeOff, FolderOpen, Plus, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { open } from '@tauri-apps/plugin-dialog';
 import { useSettingsStore } from '@/stores/settingsStore';
-import { UiCheckbox } from '@/components/ui';
+import { UiCheckbox, UiSelect } from '@/components/ui';
+import { UI_DIALOG_TRANSITION_MS } from '@/components/ui/motion';
+import { useDialogTransition } from '@/components/ui/useDialogTransition';
 
 interface SettingsDialogProps {
   isOpen: boolean;
@@ -20,13 +22,19 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
     useUploadFilenameAsNodeTitle,
     storyboardGenKeepStyleConsistent,
     storyboardGenDisableTextInImage,
+    uiRadiusPreset,
+    themeTonePreset,
+    accentColor,
     setApiKey,
     setDownloadPresetPaths,
     setUseUploadFilenameAsNodeTitle,
     setStoryboardGenKeepStyleConsistent,
     setStoryboardGenDisableTextInImage,
+    setUiRadiusPreset,
+    setThemeTonePreset,
+    setAccentColor,
   } = useSettingsStore();
-  const [activeCategory, setActiveCategory] = useState<SettingsCategory>('providers');
+  const [activeCategory, setActiveCategory] = useState<SettingsCategory>('general');
   const [localApiKey, setLocalApiKey] = useState(apiKey);
   const [localDownloadPathInput, setLocalDownloadPathInput] = useState('');
   const [localDownloadPresetPaths, setLocalDownloadPresetPaths] = useState(downloadPresetPaths);
@@ -38,7 +46,11 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
   const [localStoryboardGenDisableTextInImage, setLocalStoryboardGenDisableTextInImage] = useState(
     storyboardGenDisableTextInImage
   );
+  const [localUiRadiusPreset, setLocalUiRadiusPreset] = useState(uiRadiusPreset);
+  const [localThemeTonePreset, setLocalThemeTonePreset] = useState(themeTonePreset);
+  const [localAccentColor, setLocalAccentColor] = useState(accentColor);
   const [showApiKey, setShowApiKey] = useState(false);
+  const { shouldRender, isVisible } = useDialogTransition(isOpen, UI_DIALOG_TRANSITION_MS);
 
   useEffect(() => {
     if (!isOpen) {
@@ -49,6 +61,9 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
     setLocalUseUploadFilenameAsNodeTitle(useUploadFilenameAsNodeTitle);
     setLocalStoryboardGenKeepStyleConsistent(storyboardGenKeepStyleConsistent);
     setLocalStoryboardGenDisableTextInImage(storyboardGenDisableTextInImage);
+    setLocalUiRadiusPreset(uiRadiusPreset);
+    setLocalThemeTonePreset(themeTonePreset);
+    setLocalAccentColor(accentColor);
     setLocalDownloadPathInput('');
   }, [
     apiKey,
@@ -57,6 +72,9 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
     useUploadFilenameAsNodeTitle,
     storyboardGenKeepStyleConsistent,
     storyboardGenDisableTextInImage,
+    uiRadiusPreset,
+    themeTonePreset,
+    accentColor,
   ]);
 
   const handleSave = useCallback(() => {
@@ -65,6 +83,9 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
     setUseUploadFilenameAsNodeTitle(localUseUploadFilenameAsNodeTitle);
     setStoryboardGenKeepStyleConsistent(localStoryboardGenKeepStyleConsistent);
     setStoryboardGenDisableTextInImage(localStoryboardGenDisableTextInImage);
+    setUiRadiusPreset(localUiRadiusPreset);
+    setThemeTonePreset(localThemeTonePreset);
+    setAccentColor(localAccentColor);
     onClose();
   }, [
     localApiKey,
@@ -72,11 +93,17 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
     localUseUploadFilenameAsNodeTitle,
     localStoryboardGenKeepStyleConsistent,
     localStoryboardGenDisableTextInImage,
+    localUiRadiusPreset,
+    localThemeTonePreset,
+    localAccentColor,
     setApiKey,
     setDownloadPresetPaths,
     setUseUploadFilenameAsNodeTitle,
     setStoryboardGenKeepStyleConsistent,
     setStoryboardGenDisableTextInImage,
+    setUiRadiusPreset,
+    setThemeTonePreset,
+    setAccentColor,
     onClose,
   ]);
 
@@ -118,12 +145,17 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
     setLocalDownloadPresetPaths((previous) => previous.filter((value) => value !== path));
   }, []);
 
-  if (!isOpen) return null;
+  if (!shouldRender) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative w-[700px] h-[500px] bg-surface-dark border border-border-dark rounded-lg shadow-xl flex overflow-hidden">
+      <div
+        className={`absolute inset-0 bg-black/50 transition-opacity duration-200 ${isVisible ? 'opacity-100' : 'opacity-0'}`}
+        onClick={onClose}
+      />
+      <div
+        className={`relative h-[500px] w-[700px] overflow-hidden rounded-lg border border-border-dark bg-surface-dark shadow-xl transition-opacity duration-200 ${isVisible ? 'opacity-100' : 'opacity-0'} flex`}
+      >
         {/* Close button */}
         <button
           onClick={onClose}
@@ -141,6 +173,20 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
           </div>
 
           <nav className="flex-1">
+            <button
+              onClick={() => setActiveCategory('general')}
+              className={`
+                w-full flex items-center gap-3 px-4 py-2.5 text-left
+                transition-colors
+                ${activeCategory === 'general'
+                  ? 'bg-accent/10 text-text-dark border-l-2 border-accent'
+                  : 'text-text-muted hover:bg-bg-dark hover:text-text-dark'
+                }
+              `}
+            >
+              <span className="text-sm">{t('settings.general')}</span>
+            </button>
+
             <button
               onClick={() => setActiveCategory('providers')}
               className={`
@@ -167,20 +213,6 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
               `}
             >
               <span className="text-sm">{t('settings.appearance')}</span>
-            </button>
-
-            <button
-              onClick={() => setActiveCategory('general')}
-              className={`
-                w-full flex items-center gap-3 px-4 py-2.5 text-left
-                transition-colors
-                ${activeCategory === 'general'
-                  ? 'bg-accent/10 text-text-dark border-l-2 border-accent'
-                  : 'text-text-muted hover:bg-bg-dark hover:text-text-dark'
-                }
-              `}
-            >
-              <span className="text-sm">{t('settings.general')}</span>
             </button>
           </nav>
         </div>
@@ -211,7 +243,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
                     </div>
                     <div>
                       <h3 className="text-sm font-medium text-text-dark">
-                        {i18n.language === 'zh' ? '派欧云' : 'PPIO'}
+                        {i18n.language.startsWith('zh') ? t('settings.providerPpioName') : 'PPIO'}
                       </h3>
                     </div>
                   </div>
@@ -263,8 +295,89 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
                 </p>
               </div>
 
-              <div className="flex-1 p-6">
-                <p className="text-text-muted text-sm">{t('settings.comingSoon')}</p>
+              <div className="ui-scrollbar flex-1 space-y-4 overflow-y-auto p-6">
+                <div className="rounded-lg border border-border-dark bg-bg-dark p-4">
+                  <h3 className="text-sm font-medium text-text-dark">
+                    {t('settings.radiusPreset')}
+                  </h3>
+                  <p className="mt-1 text-xs text-text-muted">
+                    {t('settings.radiusPresetDesc')}
+                  </p>
+                  <div className="mt-3">
+                    <UiSelect
+                      value={localUiRadiusPreset}
+                      onChange={(event) =>
+                        setLocalUiRadiusPreset(event.target.value as typeof localUiRadiusPreset)
+                      }
+                      className="h-9 text-sm"
+                    >
+                      <option value="compact">{t('settings.radiusCompact')}</option>
+                      <option value="default">{t('settings.radiusDefault')}</option>
+                      <option value="large">{t('settings.radiusLarge')}</option>
+                    </UiSelect>
+                  </div>
+                </div>
+
+                <div className="rounded-lg border border-border-dark bg-bg-dark p-4">
+                  <h3 className="text-sm font-medium text-text-dark">
+                    {t('settings.themeTone')}
+                  </h3>
+                  <p className="mt-1 text-xs text-text-muted">
+                    {t('settings.themeToneDesc')}
+                  </p>
+                  <div className="mt-3">
+                    <UiSelect
+                      value={localThemeTonePreset}
+                      onChange={(event) =>
+                        setLocalThemeTonePreset(event.target.value as typeof localThemeTonePreset)
+                      }
+                      className="h-9 text-sm"
+                    >
+                      <option value="neutral">{t('settings.toneNeutral')}</option>
+                      <option value="warm">{t('settings.toneWarm')}</option>
+                      <option value="cool">{t('settings.toneCool')}</option>
+                    </UiSelect>
+                  </div>
+                </div>
+
+                <div className="rounded-lg border border-border-dark bg-bg-dark p-4">
+                  <h3 className="text-sm font-medium text-text-dark">
+                    {t('settings.accentColor')}
+                  </h3>
+                  <p className="mt-1 text-xs text-text-muted">
+                    {t('settings.accentColorDesc')}
+                  </p>
+                  <div className="mt-3 flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={localAccentColor}
+                      onChange={(event) => setLocalAccentColor(event.target.value)}
+                      className="h-9 w-12 rounded border border-border-dark bg-surface-dark p-1"
+                    />
+                    <input
+                      value={localAccentColor}
+                      onChange={(event) => setLocalAccentColor(event.target.value)}
+                      placeholder="#3B82F6"
+                      className="h-9 flex-1 rounded border border-border-dark bg-surface-dark px-3 text-sm text-text-dark outline-none placeholder:text-text-muted"
+                    />
+                    <button
+                      type="button"
+                      className="inline-flex h-9 items-center justify-center rounded border border-border-dark bg-surface-dark px-3 text-xs text-text-dark transition-colors hover:bg-bg-dark"
+                      onClick={() => setLocalAccentColor('#3B82F6')}
+                    >
+                      {t('settings.resetAccentColor')}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end border-t border-border-dark px-6 py-4">
+                <button
+                  onClick={handleSave}
+                  className="rounded bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent/80"
+                >
+                  {t('common.save')}
+                </button>
               </div>
             </>
           )}

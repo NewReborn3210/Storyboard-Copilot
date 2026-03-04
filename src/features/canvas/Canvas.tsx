@@ -21,6 +21,7 @@ import {
   type OnConnectStartParams,
   type Viewport,
 } from '@xyflow/react';
+import { useTranslation } from 'react-i18next';
 import '@xyflow/react/dist/style.css';
 
 import { useCanvasStore } from '@/stores/canvasStore';
@@ -172,6 +173,7 @@ interface PreviewConnectionLine {
 }
 
 export function Canvas() {
+  const { t } = useTranslation();
   const reactFlowInstance = useReactFlow();
   const wrapperRef = useRef<HTMLDivElement>(null);
   const suppressNextPaneClickRef = useRef(false);
@@ -1120,12 +1122,12 @@ export function Canvas() {
     () => (
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
         <div className="text-center">
-          <div className="mb-2 text-2xl text-text-muted">双击鼠标添加节点</div>
-          <div className="text-sm text-text-muted opacity-60">Double-click to add a node</div>
+          <div className="mb-2 text-2xl text-text-muted">{t('canvas.emptyHintTitle')}</div>
+          <div className="text-sm text-text-muted opacity-60">{t('canvas.emptyHintSubtitle')}</div>
         </div>
       </div>
     ),
-    []
+    [t]
   );
 
   return (

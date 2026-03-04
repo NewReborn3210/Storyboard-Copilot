@@ -1,0 +1,3 @@
+export const UI_DIALOG_TRANSITION_MS = 180;
+export const UI_POPOVER_TRANSITION_MS = 140;
+

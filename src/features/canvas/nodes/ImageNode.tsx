@@ -1,6 +1,7 @@
 import { memo, useEffect, useMemo, useState } from 'react';
 import { Handle, Position, useViewport, type NodeProps } from '@xyflow/react';
 import { Image as ImageIcon, Sparkles } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 import {
   CANVAS_NODE_TYPES,
@@ -59,6 +60,7 @@ function resolveNodeDimension(value: number | undefined, fallback: number): numb
 }
 
 export const ImageNode = memo(({ id, data, selected, type, width, height }: ImageNodeProps) => {
+  const { t } = useTranslation();
   const setSelectedNode = useCanvasStore((state) => state.setSelectedNode);
   const updateNodeData = useCanvasStore((state) => state.updateNodeData);
   const { zoom } = useViewport();
@@ -142,7 +144,7 @@ export const ImageNode = memo(({ id, data, selected, type, width, height }: Imag
         {data.imageUrl ? (
           <img
             src={imageSource ?? ''}
-            alt={isExportResultNode ? 'Result' : 'Generated'}
+            alt={isExportResultNode ? t('node.imageNode.resultAlt') : t('node.imageNode.generatedAlt')}
             className="h-full w-full object-contain"
           />
         ) : (
@@ -153,7 +155,7 @@ export const ImageNode = memo(({ id, data, selected, type, width, height }: Imag
               <Sparkles className="h-7 w-7 opacity-60" />
             )}
             <span className="px-4 text-center text-[12px] leading-6">
-              {isExportResultNode ? '等待输出结果图片' : '选中后在下方输入提示词生成或编辑图片'}
+              {isExportResultNode ? t('node.imageNode.waitingResult') : t('node.imageNode.selectToEdit')}
             </span>
           </div>
         )}

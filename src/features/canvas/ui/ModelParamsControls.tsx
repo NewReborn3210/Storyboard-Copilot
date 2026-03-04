@@ -1,6 +1,7 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { SlidersHorizontal, Zap } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 import { AUTO_REQUEST_ASPECT_RATIO } from '@/features/canvas/domain/canvasNodes';
 import {
@@ -95,6 +96,7 @@ export const ModelParamsControls = memo(({
   modelPanelClassName = 'w-[360px] p-2',
   paramsPanelClassName = 'w-[420px] p-3',
 }: ModelParamsControlsProps) => {
+  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const modelTriggerRef = useRef<HTMLDivElement>(null);
   const paramsTriggerRef = useRef<HTMLDivElement>(null);
@@ -240,9 +242,7 @@ export const ModelParamsControls = memo(({
     return {
       left: anchor.left,
       top: anchor.top,
-      transform: isPanelVisible
-        ? `${xTransform}translateY(-100%) scale(1)`
-        : `${xTransform}translateY(calc(-100% + 8px)) scale(0.95)`,
+      transform: `${xTransform}translateY(-100%)`,
     };
   };
 
@@ -293,7 +293,7 @@ export const ModelParamsControls = memo(({
       {typeof document !== 'undefined' && renderPanel === 'model' && createPortal(
         <div
           ref={modelPanelRef}
-          className={`fixed z-[80] transform-gpu transition-all duration-200 ease-out ${isPanelVisible ? 'opacity-100' : 'pointer-events-none opacity-0'
+          className={`fixed z-[80] transition-opacity duration-200 ease-out ${isPanelVisible ? 'opacity-100' : 'pointer-events-none opacity-0'
             }`}
           style={buildPanelStyle(modelPanelAnchor, modelPanelAlign)}
         >
@@ -337,13 +337,13 @@ export const ModelParamsControls = memo(({
       {typeof document !== 'undefined' && renderPanel === 'params' && createPortal(
         <div
           ref={paramsPanelRef}
-          className={`fixed z-[80] transform-gpu transition-all duration-200 ease-out ${isPanelVisible ? 'opacity-100' : 'pointer-events-none opacity-0'
+          className={`fixed z-[80] transition-opacity duration-200 ease-out ${isPanelVisible ? 'opacity-100' : 'pointer-events-none opacity-0'
             }`}
           style={buildPanelStyle(paramsPanelAnchor, paramsPanelAlign)}
         >
           <UiPanel className={paramsPanelClassName}>
             <div>
-              <div className="mb-2 text-xs text-text-muted">画质</div>
+              <div className="mb-2 text-xs text-text-muted">{t('modelParams.quality')}</div>
               <div className="grid grid-cols-4 gap-1 rounded-xl border border-[rgba(255,255,255,0.1)] bg-bg-dark/65 p-1">
                 {selectedModel.resolutions.map((item) => {
                   const active = item.value === selectedResolution.value;
@@ -367,7 +367,7 @@ export const ModelParamsControls = memo(({
             </div>
 
             <div className="mt-3">
-              <div className="mb-2 text-xs text-text-muted">比例</div>
+              <div className="mb-2 text-xs text-text-muted">{t('modelParams.aspectRatio')}</div>
               <div className="grid grid-cols-5 gap-1 rounded-xl border border-[rgba(255,255,255,0.1)] bg-bg-dark/65 p-1">
                 {aspectRatioOptions.map((item) => {
                   const active = item.value === selectedAspectRatio.value;

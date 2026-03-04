@@ -8,6 +8,8 @@ import {
   type TextareaHTMLAttributes,
 } from 'react';
 import { Check, ChevronDown, X } from 'lucide-react';
+import { UI_DIALOG_TRANSITION_MS } from './motion';
+import { useDialogTransition } from './useDialogTransition';
 
 type ButtonVariant = 'primary' | 'muted' | 'ghost';
 
@@ -181,14 +183,21 @@ export function UiModal({
   footer,
   widthClassName = 'w-[460px]',
 }: UiModalProps) {
-  if (!isOpen) {
+  const { shouldRender, isVisible } = useDialogTransition(isOpen, UI_DIALOG_TRANSITION_MS);
+
+  if (!shouldRender) {
     return null;
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/55" onClick={onClose} />
-      <UiPanel className={`relative ${widthClassName}`}>
+      <div
+        className={`absolute inset-0 bg-black/55 transition-opacity duration-200 ${isVisible ? 'opacity-100' : 'opacity-0'}`}
+        onClick={onClose}
+      />
+      <UiPanel
+        className={`relative transition-opacity duration-200 ${isVisible ? 'opacity-100' : 'opacity-0'} ${widthClassName}`}
+      >
         <div className="flex items-center justify-between border-b border-[rgba(255,255,255,0.1)] px-4 py-3">
           <h2 className="text-sm font-medium text-text-dark">{title}</h2>
           <UiIconButton className="h-8 w-8" onClick={onClose}>

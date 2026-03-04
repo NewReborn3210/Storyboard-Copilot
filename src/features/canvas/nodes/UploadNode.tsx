@@ -9,6 +9,7 @@ import {
 } from 'react';
 import { Handle, Position, useViewport, type NodeProps } from '@xyflow/react';
 import { Upload } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 import {
   CANVAS_NODE_TYPES,
@@ -71,6 +72,7 @@ function resolveNodeDimension(value: number | undefined, fallback: number): numb
 }
 
 export const UploadNode = memo(({ id, data, selected, width, height }: UploadNodeProps) => {
+  const { t } = useTranslation();
   const setSelectedNode = useCanvasStore((state) => state.setSelectedNode);
   const updateNodeData = useCanvasStore((state) => state.updateNodeData);
   const useUploadFilenameAsNodeTitle = useSettingsStore((state) => state.useUploadFilenameAsNodeTitle);
@@ -195,7 +197,7 @@ export const UploadNode = memo(({ id, data, selected, width, height }: UploadNod
         >
           <img
             src={imageSource ?? ''}
-            alt="Uploaded"
+            alt={t('node.upload.uploadedAlt')}
             className="h-full w-full object-contain"
           />
         </div>
@@ -207,7 +209,7 @@ export const UploadNode = memo(({ id, data, selected, width, height }: UploadNod
         >
           <div className="flex h-full w-full cursor-pointer flex-col items-center justify-center gap-2 text-text-muted/85">
             <Upload className="h-7 w-7 opacity-60" />
-            <span className="px-3 text-center text-[12px] leading-6">点击或拖拽上传图片</span>
+            <span className="px-3 text-center text-[12px] leading-6">{t('node.upload.hint')}</span>
           </div>
         </label>
       )}

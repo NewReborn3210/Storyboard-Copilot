@@ -2,8 +2,10 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { NodeToolbar as ReactFlowNodeToolbar } from '@xyflow/react';
 import { Copy, Crop, Download, FolderOpen, PenLine, RefreshCw, Scissors, Trash2, Unlink2 } from 'lucide-react';
 import { save } from '@tauri-apps/plugin-dialog';
+import { useTranslation } from 'react-i18next';
 
 import {
+  NODE_TOOL_TYPES,
   isExportImageNode,
   isGroupNode,
   isImageEditNode,
@@ -11,6 +13,7 @@ import {
   isStoryboardSplitNode,
   isUploadNode,
   type CanvasNode,
+  type NodeToolType,
 } from '@/features/canvas/domain/canvasNodes';
 import { canvasEventBus } from '@/features/canvas/application/canvasServices';
 import { getNodeToolPlugins } from '@/features/canvas/tools';
@@ -23,6 +26,7 @@ import {
 } from '@/commands/image';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useCanvasStore } from '@/stores/canvasStore';
+import { UI_POPOVER_TRANSITION_MS } from '@/components/ui/motion';
 import {
   NODE_TOOLBAR_ALIGN,
   NODE_TOOLBAR_CLASS,
@@ -45,6 +49,7 @@ const TOOLBAR_NEUTRAL_BUTTON_CLASS =
   'border-[rgba(255,255,255,0.18)] bg-bg-dark/70 text-text-dark hover:border-[rgba(255,255,255,0.32)] hover:bg-bg-dark';
 
 export const NodeActionToolbar = memo(({ node }: NodeActionToolbarProps) => {
+  const { t, i18n } = useTranslation();
   const isImageEdit = isImageEditNode(node);
   const isStoryboardGen = isStoryboardGenNode(node);
   const isStoryboardSplit = isStoryboardSplitNode(node);
@@ -55,11 +60,13 @@ export const NodeActionToolbar = memo(({ node }: NodeActionToolbarProps) => {
   const canReupload = isUploadNode(node) && Boolean(node.data.imageUrl);
   const downloadPresetPaths = useSettingsStore((state) => state.downloadPresetPaths);
   const [downloadMenu, setDownloadMenu] = useState<{ x: number; y: number } | null>(null);
+  const [isDownloadMenuVisible, setIsDownloadMenuVisible] = useState(false);
   const [isCopySuccess, setIsCopySuccess] = useState(false);
   const [isCopyTextSuccess, setIsCopyTextSuccess] = useState(false);
   const downloadMenuRef = useRef<HTMLDivElement | null>(null);
   const copyFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const copyTextFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const downloadMenuCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const imageSource = useMemo(() => {
     if (isUploadNode(node) || isImageEditNode(node) || isExportImageNode(node)) {
       return node.data.imageUrl || node.data.previewImageUrl || null;
@@ -67,6 +74,30 @@ export const NodeActionToolbar = memo(({ node }: NodeActionToolbarProps) => {
     return null;
   }, [node]);
   const canHandleImage = Boolean(imageSource);
+
+  const closeDownloadMenu = useCallback(() => {
+    setIsDownloadMenuVisible(false);
+    if (downloadMenuCloseTimerRef.current) {
+      clearTimeout(downloadMenuCloseTimerRef.current);
+    }
+    downloadMenuCloseTimerRef.current = setTimeout(() => {
+      setDownloadMenu(null);
+      downloadMenuCloseTimerRef.current = null;
+    }, UI_POPOVER_TRANSITION_MS);
+  }, []);
+
+  const resolveToolLabel = useCallback((toolType: NodeToolType) => {
+    if (toolType === NODE_TOOL_TYPES.crop) {
+      return t('tool.crop');
+    }
+    if (toolType === NODE_TOOL_TYPES.annotate) {
+      return t('tool.annotate');
+    }
+    if (toolType === NODE_TOOL_TYPES.splitStoryboard) {
+      return t('tool.split');
+    }
+    return '';
+  }, [t]);
 
   useEffect(() => {
     if (!downloadMenu) {
@@ -76,18 +107,30 @@ export const NodeActionToolbar = memo(({ node }: NodeActionToolbarProps) => {
     const onPointerDown = (event: PointerEvent) => {
       const menuElement = downloadMenuRef.current;
       if (!menuElement) {
-        setDownloadMenu(null);
+        closeDownloadMenu();
         return;
       }
       if (menuElement.contains(event.target as Node)) {
         return;
       }
-      setDownloadMenu(null);
+      closeDownloadMenu();
     };
 
     window.addEventListener('pointerdown', onPointerDown, true);
     return () => {
       window.removeEventListener('pointerdown', onPointerDown, true);
+    };
+  }, [closeDownloadMenu, downloadMenu]);
+
+  useEffect(() => {
+    if (!downloadMenu) {
+      return;
+    }
+    const frameId = requestAnimationFrame(() => {
+      setIsDownloadMenuVisible(true);
+    });
+    return () => {
+      cancelAnimationFrame(frameId);
     };
   }, [downloadMenu]);
 
@@ -98,6 +141,9 @@ export const NodeActionToolbar = memo(({ node }: NodeActionToolbarProps) => {
       }
       if (copyTextFeedbackTimerRef.current) {
         clearTimeout(copyTextFeedbackTimerRef.current);
+      }
+      if (downloadMenuCloseTimerRef.current) {
+        clearTimeout(downloadMenuCloseTimerRef.current);
       }
     };
   }, []);
@@ -126,17 +172,23 @@ export const NodeActionToolbar = memo(({ node }: NodeActionToolbarProps) => {
   const storyboardText = useMemo(() => {
     if (isStoryboardGen) {
       return node.data.frames
-        .map((frame, index) => `分镜 ${String(index + 1).padStart(2, '0')}：${frame.description?.trim() ?? ''}`)
+        .map((frame, index) => t('nodeToolbar.storyboardLine', {
+          index: String(index + 1).padStart(2, '0'),
+          content: frame.description?.trim() ?? '',
+        }))
         .join('\n');
     }
     if (isStoryboardSplit) {
       const orderedFrames = [...node.data.frames].sort((a, b) => a.order - b.order);
       return orderedFrames
-        .map((frame, index) => `分镜 ${String(index + 1).padStart(2, '0')}：${frame.note?.trim() ?? ''}`)
+        .map((frame, index) => t('nodeToolbar.storyboardLine', {
+          index: String(index + 1).padStart(2, '0'),
+          content: frame.note?.trim() ?? '',
+        }))
         .join('\n');
     }
     return '';
-  }, [isStoryboardGen, isStoryboardSplit, node]);
+  }, [isStoryboardGen, isStoryboardSplit, node, t, i18n.language]);
 
   const handleCopyStoryboardText = useCallback(async () => {
     if (!storyboardText) {
@@ -172,11 +224,11 @@ export const NodeActionToolbar = memo(({ node }: NodeActionToolbarProps) => {
         return;
       }
       await saveImageSourceToPath(imageSource, selectedPath);
-      setDownloadMenu(null);
+      closeDownloadMenu();
     } catch (error) {
       console.error('Failed to save image with save-as', error);
     }
-  }, [imageSource, node.id]);
+  }, [closeDownloadMenu, imageSource, node.id]);
 
   const handleDownloadToPreset = useCallback(
     async (targetDir: string) => {
@@ -185,12 +237,12 @@ export const NodeActionToolbar = memo(({ node }: NodeActionToolbarProps) => {
       }
       try {
         await saveImageSourceToDirectory(imageSource, targetDir, `node-${node.id}`);
-        setDownloadMenu(null);
+        closeDownloadMenu();
       } catch (error) {
         console.error('Failed to save image to preset dir', error);
       }
     },
-    [imageSource, node.id]
+    [closeDownloadMenu, imageSource, node.id]
   );
 
   return (
@@ -218,7 +270,7 @@ export const NodeActionToolbar = memo(({ node }: NodeActionToolbarProps) => {
               }
             >
               <Icon className="h-3.5 w-3.5" />
-              {tool.label}
+              {resolveToolLabel(tool.type)}
             </UiChipButton>
           );
         })}
@@ -233,7 +285,7 @@ export const NodeActionToolbar = memo(({ node }: NodeActionToolbarProps) => {
             }
           >
             <RefreshCw className="h-3.5 w-3.5" />
-            重新上传
+            {t('nodeToolbar.reupload')}
           </UiChipButton>
         )}
         {!isImageEdit && canHandleImage && (
@@ -249,7 +301,7 @@ export const NodeActionToolbar = memo(({ node }: NodeActionToolbarProps) => {
             }}
           >
             <Copy className="h-3.5 w-3.5" />
-            复制
+            {t('nodeToolbar.copy')}
           </UiChipButton>
         )}
         {!isImageEdit && canCopyStoryboardText && (
@@ -265,7 +317,7 @@ export const NodeActionToolbar = memo(({ node }: NodeActionToolbarProps) => {
             }}
           >
             <Copy className="h-3.5 w-3.5" />
-            复制文本
+            {t('nodeToolbar.copyText')}
           </UiChipButton>
         )}
         {!isImageEdit && canHandleImage && (
@@ -282,10 +334,11 @@ export const NodeActionToolbar = memo(({ node }: NodeActionToolbarProps) => {
                 x: event.clientX,
                 y: event.clientY,
               });
+              setIsDownloadMenuVisible(false);
             }}
           >
             <Download className="h-3.5 w-3.5" />
-            下载
+            {t('nodeToolbar.download')}
           </UiChipButton>
         )}
         {!isImageEdit && isGroupNode(node) && (
@@ -294,12 +347,12 @@ export const NodeActionToolbar = memo(({ node }: NodeActionToolbarProps) => {
             className={`h-8 ${TOOLBAR_BUTTON_RADIUS_CLASS} px-2.5 text-xs ${TOOLBAR_NEUTRAL_BUTTON_CLASS} hover:!border-amber-400/60 hover:!bg-amber-500/20 hover:!text-amber-200`}
             onClick={(event) => {
               event.stopPropagation();
-              setDownloadMenu(null);
+              closeDownloadMenu();
               ungroupNode(node.id);
             }}
           >
             <Unlink2 className="h-3.5 w-3.5" />
-            解散
+            {t('nodeToolbar.ungroup')}
           </UiChipButton>
         )}
         <UiChipButton
@@ -307,19 +360,19 @@ export const NodeActionToolbar = memo(({ node }: NodeActionToolbarProps) => {
           className={`h-8 ${TOOLBAR_BUTTON_RADIUS_CLASS} border-red-500/45 bg-red-500/15 px-2.5 text-xs text-red-300 hover:bg-red-500/25`}
           onClick={(event) => {
             event.stopPropagation();
-            setDownloadMenu(null);
+            closeDownloadMenu();
             deleteNode(node.id);
           }}
         >
           <Trash2 className="h-3.5 w-3.5" />
-          删除
+          {t('common.delete')}
         </UiChipButton>
       </UiPanel>
 
       {!isImageEdit && downloadMenu && (
         <div
           ref={downloadMenuRef}
-          className="fixed z-[120] min-w-[280px] rounded-xl border border-[rgba(255,255,255,0.18)] bg-surface-dark/95 p-2 shadow-2xl backdrop-blur-sm"
+          className={`fixed z-[120] min-w-[280px] rounded-xl border border-[rgba(255,255,255,0.18)] bg-surface-dark/95 p-2 shadow-2xl backdrop-blur-sm transition-opacity duration-150 ${isDownloadMenuVisible ? 'opacity-100' : 'opacity-0'}`}
           style={{ left: `${downloadMenu.x}px`, top: `${downloadMenu.y}px` }}
         >
           <button
@@ -330,7 +383,7 @@ export const NodeActionToolbar = memo(({ node }: NodeActionToolbarProps) => {
             }}
           >
             <Download className="h-4 w-4" />
-            另存为...
+            {t('nodeToolbar.saveAs')}
           </button>
 
           {downloadPresetPaths.length > 0 ? (
@@ -352,7 +405,7 @@ export const NodeActionToolbar = memo(({ node }: NodeActionToolbarProps) => {
             </div>
           ) : (
             <div className="mt-1 border-t border-[rgba(255,255,255,0.1)] px-2.5 pt-2 text-xs text-text-muted">
-              暂无预设路径，请在设置 - 通用中添加
+              {t('nodeToolbar.noDownloadPresetPathsHint')}
             </div>
           )}
         </div>

@@ -1,6 +1,7 @@
 import { useMemo, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Image, Upload, Sparkles, LayoutGrid, Type } from 'lucide-react';
+import { UI_POPOVER_TRANSITION_MS } from '@/components/ui/motion';
 
 import type { CanvasNodeType } from '@/features/canvas/domain/canvasNodes';
 import { nodeCatalog } from '@/features/canvas/application/nodeCatalog';
@@ -65,7 +66,7 @@ export function NodeSelectionMenu({
 
   const handleClose = useCallback(() => {
     setIsVisible(false);
-    setTimeout(onClose, 150);
+    setTimeout(onClose, UI_POPOVER_TRANSITION_MS);
   }, [onClose]);
 
   useEffect(() => {
@@ -88,8 +89,8 @@ export function NodeSelectionMenu({
       ref={menuRef}
       className={`
         absolute z-50 min-w-[220px] overflow-hidden rounded-lg border border-border-dark bg-surface-dark shadow-xl
-        transition-all duration-150
-        ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0'}
+        transition-opacity duration-150
+        ${isVisible ? 'opacity-100' : 'opacity-0'}
       `}
       style={{ left: position.x, top: position.y }}
     >
@@ -102,7 +103,7 @@ export function NodeSelectionMenu({
             style={{ transitionDelay: isVisible ? `${index * 30}ms` : '0ms' }}
             onClick={() => {
               handleClose();
-              setTimeout(() => onSelect(item.type), 160);
+              setTimeout(() => onSelect(item.type), UI_POPOVER_TRANSITION_MS + 10);
             }}
           >
             <div className="flex h-8 w-8 items-center justify-center rounded-md bg-bg-dark">

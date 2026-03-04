@@ -4,6 +4,7 @@ import { Minus, X, Maximize2, Settings, ArrowLeft } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Moon, Sun, Languages } from 'lucide-react';
 import { useThemeStore } from '@/stores/themeStore';
+import { useProjectStore } from '@/stores/projectStore';
 
 interface TitleBarProps {
   onSettingsClick: () => void;
@@ -14,8 +15,12 @@ interface TitleBarProps {
 export function TitleBar({ onSettingsClick, showBackButton, onBackClick }: TitleBarProps) {
   const { t, i18n } = useTranslation();
   const { theme, toggleTheme } = useThemeStore();
+  const currentProjectName = useProjectStore((state) => state.currentProject?.name);
 
   const appWindow = getCurrentWindow();
+  const isZh = i18n.language.startsWith('zh');
+  const appTitle = t('app.title');
+  const titleText = currentProjectName ? `${currentProjectName} - ${appTitle}` : appTitle;
 
   const handleMinimize = useCallback(async () => {
     await appWindow.minimize();
@@ -44,7 +49,7 @@ export function TitleBar({ onSettingsClick, showBackButton, onBackClick }: Title
   }, [appWindow]);
 
   const handleLanguageClick = useCallback(() => {
-    const newLang = i18n.language === 'zh' ? 'en' : 'zh';
+    const newLang = i18n.language.startsWith('zh') ? 'en' : 'zh';
     i18n.changeLanguage(newLang);
   }, [i18n]);
 
@@ -69,17 +74,17 @@ export function TitleBar({ onSettingsClick, showBackButton, onBackClick }: Title
               onBackClick();
             }}
             className="mr-3 p-1 hover:bg-bg-dark rounded transition-colors"
-            title="返回"
+            title={t('titleBar.back')}
           >
             <ArrowLeft className="w-4 h-4 text-text-muted hover:text-text-dark" />
           </button>
         )}
         <span className="text-sm font-semibold text-text-dark">
-          {t('app.title')}
+          {titleText}
         </span>
-        <span className="text-xs text-text-muted ml-2">
-          {t('app.subtitle')}
-        </span>
+        {!isZh && !currentProjectName ? (
+          <span className="text-xs text-text-muted ml-2">{t('app.subtitle')}</span>
+        ) : null}
       </div>
 
       {/* 右侧按钮区域 */}
@@ -88,7 +93,7 @@ export function TitleBar({ onSettingsClick, showBackButton, onBackClick }: Title
           type="button"
           onClick={handleLanguageClick}
           className="h-full px-3 hover:bg-bg-dark transition-colors"
-          title={i18n.language === 'zh' ? 'English' : '中文'}
+          title={i18n.language.startsWith('zh') ? t('titleBar.switchToEnglish') : t('titleBar.switchToChinese')}
         >
           <Languages className="w-4 h-4 text-text-muted" />
         </button>
@@ -121,7 +126,7 @@ export function TitleBar({ onSettingsClick, showBackButton, onBackClick }: Title
           type="button"
           onClick={handleMinimize}
           className="h-full px-3 hover:bg-bg-dark transition-colors"
-          title="最小化"
+          title={t('titleBar.minimize')}
         >
           <Minus className="w-4 h-4 text-text-muted hover:text-text-dark" />
         </button>
@@ -130,7 +135,7 @@ export function TitleBar({ onSettingsClick, showBackButton, onBackClick }: Title
           type="button"
           onClick={handleMaximize}
           className="h-full px-3 hover:bg-bg-dark transition-colors"
-          title="最大化"
+          title={t('titleBar.maximize')}
         >
           <Maximize2 className="w-4 h-4 text-text-muted hover:text-text-dark" />
         </button>
@@ -139,7 +144,7 @@ export function TitleBar({ onSettingsClick, showBackButton, onBackClick }: Title
           type="button"
           onClick={handleClose}
           className="h-full px-3 hover:bg-red-500 transition-colors group"
-          title="关闭"
+          title={t('titleBar.close')}
         >
           <X className="w-4 h-4 text-text-muted group-hover:text-white" />
         </button>

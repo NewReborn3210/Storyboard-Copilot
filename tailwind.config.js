@@ -1,4 +1,6 @@
 /** @type {import('tailwindcss').Config} */
+const withOpacity = (variable) => `rgb(var(${variable}) / <alpha-value>)`;
+
 export default {
   content: [
     "./index.html",
@@ -9,26 +11,26 @@ export default {
     extend: {
       colors: {
         bg: {
-          DEFAULT: '#ffffff',
-          dark: '#0f0f0f',
+          DEFAULT: withOpacity('--bg-rgb'),
+          dark: withOpacity('--bg-rgb'),
         },
         surface: {
-          DEFAULT: '#f5f5f5',
-          dark: '#1a1a1a',
+          DEFAULT: withOpacity('--surface-rgb'),
+          dark: withOpacity('--surface-rgb'),
         },
         border: {
-          DEFAULT: '#e0e0e0',
-          dark: '#2a2a2a',
+          DEFAULT: withOpacity('--border-rgb'),
+          dark: withOpacity('--border-rgb'),
         },
         text: {
-          DEFAULT: '#000000',
-          dark: '#ffffff',
+          DEFAULT: withOpacity('--text-rgb'),
+          dark: withOpacity('--text-rgb'),
         },
         'text-muted': {
-          DEFAULT: '#666666',
-          dark: '#888888',
+          DEFAULT: withOpacity('--text-muted-rgb'),
+          dark: withOpacity('--text-muted-rgb'),
         },
-        accent: '#3B82F6',
+        accent: withOpacity('--accent-rgb'),
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],

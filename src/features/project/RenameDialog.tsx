@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { UI_DIALOG_TRANSITION_MS } from '@/components/ui/motion';
+import { useDialogTransition } from '@/components/ui/useDialogTransition';
 
 interface RenameDialogProps {
   isOpen: boolean;
@@ -18,6 +20,7 @@ export function RenameDialog({
 }: RenameDialogProps) {
   const { t } = useTranslation();
   const [name, setName] = useState(defaultValue);
+  const { shouldRender, isVisible } = useDialogTransition(isOpen, UI_DIALOG_TRANSITION_MS);
 
   useEffect(() => {
     if (isOpen) {
@@ -40,15 +43,17 @@ export function RenameDialog({
     }
   };
 
-  if (!isOpen) return null;
+  if (!shouldRender) return null;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center">
       <div
-        className="absolute inset-0 bg-black/50"
+        className={`absolute inset-0 bg-black/50 transition-opacity duration-200 ${isVisible ? 'opacity-100' : 'opacity-0'}`}
         onClick={onClose}
       />
-      <div className="relative bg-surface-dark border border-border-dark rounded-lg p-6 w-80 shadow-xl">
+      <div
+        className={`relative w-80 rounded-lg border border-border-dark bg-surface-dark p-6 shadow-xl transition-opacity duration-200 ${isVisible ? 'opacity-100' : 'opacity-0'}`}
+      >
         <h2 className="text-lg font-semibold text-text-dark mb-4">{title}</h2>
         <input
           type="text"

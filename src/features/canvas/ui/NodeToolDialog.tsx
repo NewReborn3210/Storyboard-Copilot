@@ -1,6 +1,13 @@
 import { useMemo, useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 
-import { isExportImageNode, isImageEditNode, isUploadNode } from '@/features/canvas/domain/canvasNodes';
+import {
+  NODE_TOOL_TYPES,
+  isExportImageNode,
+  isImageEditNode,
+  isUploadNode,
+  type NodeToolType,
+} from '@/features/canvas/domain/canvasNodes';
 import { EXPORT_RESULT_DISPLAY_NAME } from '@/features/canvas/domain/nodeDisplay';
 import {
   canvasEventBus,
@@ -11,12 +18,14 @@ import { readStoryboardImageMetadata } from '@/commands/image';
 import { getToolPlugin, type ToolOptions } from '@/features/canvas/tools';
 import { useCanvasStore } from '@/stores/canvasStore';
 import { UiButton, UiModal } from '@/components/ui';
+import { UI_DIALOG_TRANSITION_MS } from '@/components/ui/motion';
 import { FormToolEditor } from './tool-editors/FormToolEditor';
 import { CropToolEditor } from './tool-editors/CropToolEditor';
 import { AnnotateToolEditor } from './tool-editors/AnnotateToolEditor';
 import { SplitStoryboardToolEditor } from './tool-editors/SplitStoryboardToolEditor';
 
 export function NodeToolDialog() {
+  const { t } = useTranslation();
   const activeToolDialog = useCanvasStore((state) => state.activeToolDialog);
   const nodes = useCanvasStore((state) => state.nodes);
   const addDerivedExportNode = useCanvasStore((state) => state.addDerivedExportNode);
@@ -26,14 +35,30 @@ export function NodeToolDialog() {
   const [error, setError] = useState<string | null>(null);
   const [options, setOptions] = useState<ToolOptions>({});
   const [isSplitImageReady, setIsSplitImageReady] = useState(true);
+  const [displayToolDialog, setDisplayToolDialog] = useState(activeToolDialog);
+
+  useEffect(() => {
+    if (activeToolDialog) {
+      setDisplayToolDialog(activeToolDialog);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setDisplayToolDialog(null);
+    }, UI_DIALOG_TRANSITION_MS);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [activeToolDialog]);
 
   const sourceNode = useMemo(() => {
-    if (!activeToolDialog) {
+    if (!displayToolDialog) {
       return null;
     }
 
-    return nodes.find((node) => node.id === activeToolDialog.nodeId) ?? null;
-  }, [activeToolDialog, nodes]);
+    return nodes.find((node) => node.id === displayToolDialog.nodeId) ?? null;
+  }, [displayToolDialog, nodes]);
 
   const sourceImageUrl = useMemo(() => {
     if (!sourceNode) {
@@ -48,15 +73,15 @@ export function NodeToolDialog() {
   }, [sourceNode]);
 
   const activePlugin = useMemo(() => {
-    if (!activeToolDialog) {
+    if (!displayToolDialog) {
       return null;
     }
 
-    return getToolPlugin(activeToolDialog.toolType);
-  }, [activeToolDialog]);
+    return getToolPlugin(displayToolDialog.toolType);
+  }, [displayToolDialog]);
 
-  const dialogKey = activeToolDialog
-    ? `${activeToolDialog.nodeId}:${activeToolDialog.toolType}`
+  const dialogKey = displayToolDialog
+    ? `${displayToolDialog.nodeId}:${displayToolDialog.toolType}`
     : null;
 
   useEffect(() => {
@@ -144,9 +169,25 @@ export function NodeToolDialog() {
     canvasEventBus.publish('tool-dialog/close', undefined);
   }, []);
 
+  const resolveToolLabel = useCallback((toolType: NodeToolType | undefined) => {
+    if (!toolType) {
+      return '';
+    }
+    if (toolType === NODE_TOOL_TYPES.crop) {
+      return t('tool.crop');
+    }
+    if (toolType === NODE_TOOL_TYPES.annotate) {
+      return t('tool.annotate');
+    }
+    if (toolType === NODE_TOOL_TYPES.splitStoryboard) {
+      return t('tool.split');
+    }
+    return '';
+  }, [t]);
+
   const handleApply = useCallback(async () => {
     if (!activeToolDialog || !sourceNode || !sourceImageUrl || !activePlugin) {
-      setError('当前节点没有可处理的图片');
+      setError(t('toolDialog.noProcessableImage'));
       return;
     }
 
@@ -183,7 +224,7 @@ export function NodeToolDialog() {
 
       closeDialog();
     } catch (processError) {
-      setError(processError instanceof Error ? processError.message : '处理失败');
+      setError(processError instanceof Error ? processError.message : t('toolDialog.processFailed'));
     } finally {
       setIsProcessing(false);
     }
@@ -196,6 +237,7 @@ export function NodeToolDialog() {
     addStoryboardSplitNode,
     addDerivedExportNode,
     closeDialog,
+    t,
   ]);
 
   const widthClassName = useMemo(() => {
@@ -262,21 +304,21 @@ export function NodeToolDialog() {
     );
   }, [activePlugin, options, sourceImageUrl]);
 
-  const isOpen = Boolean(activeToolDialog && sourceNode && activePlugin && isSplitImageReady);
+  const isOpen = Boolean(activeToolDialog && isSplitImageReady);
 
   return (
     <UiModal
       isOpen={isOpen}
-      title={`${activePlugin?.label ?? ''}工具`}
+      title={`${resolveToolLabel(activePlugin?.type)}${t('toolDialog.suffix')}`}
       onClose={closeDialog}
       widthClassName={widthClassName}
       footer={
         <>
           <UiButton variant="ghost" size="sm" onClick={closeDialog}>
-            取消
+            {t('common.cancel')}
           </UiButton>
           <UiButton size="sm" variant="primary" onClick={handleApply} disabled={isProcessing || !sourceImageUrl}>
-            {isProcessing ? '处理中...' : '应用'}
+            {isProcessing ? t('toolDialog.processing') : t('toolDialog.apply')}
           </UiButton>
         </>
       }

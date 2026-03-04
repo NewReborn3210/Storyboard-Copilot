@@ -10,6 +10,7 @@ import {
 } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { Sparkles } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 import {
   AUTO_REQUEST_ASPECT_RATIO,
@@ -64,11 +65,6 @@ interface PickerAnchor {
   left: number;
   top: number;
 }
-
-const AUTO_ASPECT_RATIO_OPTION: AspectRatioChoice = {
-  value: AUTO_REQUEST_ASPECT_RATIO,
-  label: '自动',
-};
 
 const IMAGE_REFERENCE_MARKER_REGEX = /@图\d+/g;
 const PICKER_FALLBACK_ANCHOR: PickerAnchor = { left: 8, top: 8 };
@@ -199,10 +195,10 @@ function pickClosestAspectRatio(
   return bestValue;
 }
 
-function buildAiResultNodeTitle(prompt: string): string {
+function buildAiResultNodeTitle(prompt: string, fallbackTitle: string): string {
   const normalizedPrompt = prompt.trim();
   if (!normalizedPrompt) {
-    return '结果图片';
+    return fallbackTitle;
   }
 
   if (normalizedPrompt.length <= AI_RESULT_TITLE_MAX_CHARS) {
@@ -213,6 +209,7 @@ function buildAiResultNodeTitle(prompt: string): string {
 }
 
 export const ImageEditNode = memo(({ id, data, selected, width, height }: ImageEditNodeProps) => {
+  const { t } = useTranslation();
   const [error, setError] = useState<string | null>(null);
 
   const rootRef = useRef<HTMLDivElement>(null);
@@ -263,14 +260,17 @@ export const ImageEditNode = memo(({ id, data, selected, width, height }: ImageE
   );
 
   const aspectRatioOptions = useMemo<AspectRatioChoice[]>(
-    () => [AUTO_ASPECT_RATIO_OPTION, ...selectedModel.aspectRatios],
-    [selectedModel.aspectRatios]
+    () => [{
+      value: AUTO_REQUEST_ASPECT_RATIO,
+      label: t('modelParams.autoAspectRatio'),
+    }, ...selectedModel.aspectRatios],
+    [selectedModel.aspectRatios, t]
   );
 
   const selectedAspectRatio = useMemo(
     () =>
       aspectRatioOptions.find((item) => item.value === data.requestAspectRatio) ??
-      AUTO_ASPECT_RATIO_OPTION,
+      aspectRatioOptions[0],
     [aspectRatioOptions, data.requestAspectRatio]
   );
 
@@ -344,18 +344,18 @@ export const ImageEditNode = memo(({ id, data, selected, width, height }: ImageE
   const handleGenerate = useCallback(async () => {
     const prompt = data.prompt.replace(/@(?=图\d+)/g, '').trim();
     if (!prompt) {
-      setError('请输入提示词');
+      setError(t('node.imageEdit.promptRequired'));
       return;
     }
 
     if (!apiKey) {
-      setError('请在设置中填写 API Key');
+      setError(t('node.imageEdit.apiKeyRequired'));
       return;
     }
 
     const generationDurationMs = selectedModel.expectedDurationMs ?? 60000;
     const generationStartedAt = Date.now();
-    const resultNodeTitle = buildAiResultNodeTitle(prompt);
+    const resultNodeTitle = buildAiResultNodeTitle(prompt, t('node.imageEdit.resultTitle'));
     setError(null);
 
     const newNodePosition = findNodePosition(
@@ -414,7 +414,7 @@ export const ImageEditNode = memo(({ id, data, selected, width, height }: ImageE
         generationStartedAt: null,
       });
     } catch (generationError) {
-      setError(generationError instanceof Error ? generationError.message : '生成失败');
+      setError(generationError instanceof Error ? generationError.message : t('ai.error'));
       updateNodeData(newNodeId, {
         isGenerating: false,
         generationStartedAt: null,
@@ -433,6 +433,7 @@ export const ImageEditNode = memo(({ id, data, selected, width, height }: ImageE
     selectedModel.expectedDurationMs,
     selectedResolution.value,
     supportedAspectRatioValues,
+    t,
     updateNodeData,
   ]);
 
@@ -550,7 +551,7 @@ export const ImageEditNode = memo(({ id, data, selected, width, height }: ImageE
             onKeyDown={handlePromptKeyDown}
             onScroll={syncPromptHighlightScroll}
             onMouseDown={(event) => event.stopPropagation()}
-            placeholder="描述任何你想要生成或编辑的内容"
+            placeholder={t('node.imageEdit.promptPlaceholder')}
             className="ui-scrollbar nodrag nowheel relative z-10 h-full w-full resize-none border-none bg-transparent px-1 py-0.5 text-sm leading-6 text-transparent caret-text-dark outline-none placeholder:text-text-muted/80 focus:border-transparent"
           />
         </div>
@@ -622,7 +623,7 @@ export const ImageEditNode = memo(({ id, data, selected, width, height }: ImageE
           className={`shrink-0 ${NODE_CONTROL_PRIMARY_BUTTON_CLASS}`}
         >
           <Sparkles className={NODE_CONTROL_ICON_CLASS} strokeWidth={2.8} />
-          生成
+          {t('canvas.generate')}
         </UiButton>
       </div>
 

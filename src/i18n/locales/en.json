@@ -18,10 +18,20 @@
     "dark": "Dark",
     "light": "Light"
   },
+  "titleBar": {
+    "back": "Back",
+    "switchToEnglish": "English",
+    "switchToChinese": "中文",
+    "minimize": "Minimize",
+    "maximize": "Maximize",
+    "close": "Close"
+  },
   "canvas": {
     "addImage": "Add Image",
     "splitStoryboard": "Split Storyboard",
     "generate": "Generate",
+    "emptyHintTitle": "Double-click to add a node",
+    "emptyHintSubtitle": "Double-click to add a node",
     "toolbar": {
       "zoomIn": "Zoom In",
       "zoomOut": "Zoom Out",
@@ -30,10 +40,37 @@
       "unlock": "Unlock Canvas"
     }
   },
+  "tool": {
+    "crop": "Crop",
+    "annotate": "Annotate",
+    "split": "Split"
+  },
+  "toolDialog": {
+    "suffix": " Tool",
+    "noProcessableImage": "No processable image for current node",
+    "processFailed": "Processing failed",
+    "processing": "Processing...",
+    "apply": "Apply"
+  },
+  "nodeToolbar": {
+    "reupload": "Reupload",
+    "copy": "Copy",
+    "copyText": "Copy Text",
+    "download": "Download",
+    "ungroup": "Ungroup",
+    "saveAs": "Save as...",
+    "noDownloadPresetPathsHint": "No preset path. Add one in Settings > General.",
+    "storyboardLine": "Storyboard {{index}}: {{content}}"
+  },
+  "modelParams": {
+    "autoAspectRatio": "Auto",
+    "quality": "Quality",
+    "aspectRatio": "Aspect Ratio"
+  },
   "node": {
     "menu": {
       "uploadImage": "Upload Image",
-      "aiImageGeneration": "AI Image Generation",
+      "aiImageGeneration": "AI Image",
       "storyboard": "Storyboard Node",
       "storyboardGen": "Storyboard Generation",
       "textAnnotation": "Text Annotation"
@@ -46,7 +83,21 @@
       "aspectRatio": "Aspect Ratio",
       "referenceImages": "Reference Images",
       "noImage": "No Image",
-      "dragImage": "Drag or click to upload image"
+      "dragImage": "Drag or click to upload image",
+      "resultAlt": "Result image",
+      "generatedAlt": "Generated image",
+      "waitingResult": "Waiting for output image",
+      "selectToEdit": "Select this node and enter a prompt below to generate or edit image"
+    },
+    "imageEdit": {
+      "promptRequired": "Please enter a prompt",
+      "apiKeyRequired": "Please set API key in Settings",
+      "resultTitle": "Result Image",
+      "promptPlaceholder": "Describe anything you want to generate or edit"
+    },
+    "upload": {
+      "uploadedAlt": "Uploaded image",
+      "hint": "Click or drag to upload image"
     },
     "storyboardNode": {
       "title": "Storyboard Node",
@@ -106,7 +157,21 @@
     "model": "Model",
     "enterApiKey": "Enter API Key",
     "addProvider": "Add Provider",
+    "providerPpioName": "PPIO",
     "comingSoon": "Coming soon...",
+    "radiusPreset": "Corner Radius",
+    "radiusPresetDesc": "Control global corner style for panels, inputs, and nodes.",
+    "radiusCompact": "Compact",
+    "radiusDefault": "Default",
+    "radiusLarge": "Rounded",
+    "themeTone": "Theme Tone",
+    "themeToneDesc": "Choose neutral, warm, or cool tint for both light and dark themes.",
+    "toneNeutral": "Neutral",
+    "toneWarm": "Warm",
+    "toneCool": "Cool",
+    "accentColor": "Accent Color",
+    "accentColorDesc": "Used by buttons, selected borders, and interaction highlights.",
+    "resetAccentColor": "Reset",
     "downloadPresetPaths": "Download Preset Paths",
     "downloadPresetPathsDesc": "Used by node toolbar download menu for quick-save directories (up to 8).",
     "storyboardGenKeepStyleConsistent": "Keep storyboard style aligned with references",
