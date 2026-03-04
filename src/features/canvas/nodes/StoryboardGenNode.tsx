@@ -63,6 +63,59 @@ const STORYBOARD_CONTROL_ROW_WIDTH_PX = 274;
 const STORYBOARD_GEN_HEADER_ADJUST = { x: 0, y: 0, scale: 1 };
 const STORYBOARD_GEN_ICON_ADJUST = { x: 0, y: 0, scale: 0.95 };
 const STORYBOARD_GEN_TITLE_ADJUST = { x: 0, y: 0, scale: 1 };
+const GRID_CONTROL_CONTAINER_CLASS = 'flex h-5 items-center gap-0.5 rounded-full border border-[rgba(255,255,255,0.14)] bg-[rgba(255,255,255,0.04)] px-1';
+const GRID_CONTROL_LABEL_CLASS = 'text-[9px] text-text-muted';
+const GRID_CONTROL_BUTTON_CLASS = 'flex h-3 w-3 items-center justify-center rounded text-text-muted transition-colors hover:bg-white/10 hover:text-text-dark';
+const GRID_CONTROL_ICON_CLASS = 'h-1.5 w-1.5';
+const GRID_CONTROL_VALUE_CLASS = 'min-w-[14px] text-center text-[9px] font-semibold text-text-dark';
+const GRID_SUMMARY_CLASS = 'flex h-5 items-center rounded-full border border-[rgba(255,255,255,0.14)] bg-[rgba(255,255,255,0.05)] px-1.5 text-[9px] text-text-muted';
+const FRAME_GRID_GAP_PX = 2;
+const CONTROL_ROW_HEIGHT_PX = 20;
+const CONTROL_ROW_MARGIN_BOTTOM_PX = 10;
+const FRAME_GRID_MARGIN_BOTTOM_PX = 8;
+const PARAM_ROW_HEIGHT_PX = 20;
+const NODE_VERTICAL_PADDING_PX = 24;
+
+type GridStepperControlProps = {
+  label: string;
+  value: number;
+  onDecrease: () => void;
+  onIncrease: () => void;
+};
+
+function GridStepperControl({
+  label,
+  value,
+  onDecrease,
+  onIncrease,
+}: GridStepperControlProps) {
+  return (
+    <div className={GRID_CONTROL_CONTAINER_CLASS}>
+      <span className={GRID_CONTROL_LABEL_CLASS}>{label}</span>
+      <button
+        type="button"
+        className={GRID_CONTROL_BUTTON_CLASS}
+        onClick={(event) => {
+          event.stopPropagation();
+          onDecrease();
+        }}
+      >
+        <Minus className={GRID_CONTROL_ICON_CLASS} />
+      </button>
+      <span className={GRID_CONTROL_VALUE_CLASS}>{value}</span>
+      <button
+        type="button"
+        className={GRID_CONTROL_BUTTON_CLASS}
+        onClick={(event) => {
+          event.stopPropagation();
+          onIncrease();
+        }}
+      >
+        <Plus className={GRID_CONTROL_ICON_CLASS} />
+      </button>
+    </div>
+  );
+}
 
 function pickClosestAspectRatio(
   targetRatio: number,
@@ -98,7 +151,6 @@ export const StoryboardGenNode = memo(({ id, data, selected }: StoryboardGenNode
   const nodes = useCanvasStore((state) => state.nodes);
   const edges = useCanvasStore((state) => state.edges);
   const updateNodeData = useCanvasStore((state) => state.updateNodeData);
-  const updateNodePosition = useCanvasStore((state) => state.updateNodePosition);
   const addNode = useCanvasStore((state) => state.addNode);
   const addEdge = useCanvasStore((state) => state.addEdge);
   const findNodePosition = useCanvasStore((state) => state.findNodePosition);
@@ -106,11 +158,8 @@ export const StoryboardGenNode = memo(({ id, data, selected }: StoryboardGenNode
 
   const [error, setError] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
-  const nodePositionRef = useRef<{ x: number; y: number } | null>(null);
-  const nodeSizeRef = useRef<{ width: number; height: number } | null>(null);
 
   const nodeData = data as StoryboardGenNodeData;
-  const currentNode = nodes.find((n) => n.id === id);
   const resolvedTitle = useMemo(
     () => resolveNodeDisplayName(CANVAS_NODE_TYPES.storyboardGen, nodeData),
     [nodeData]
@@ -165,18 +214,30 @@ export const StoryboardGenNode = memo(({ id, data, selected }: StoryboardGenNode
     }
 
     const roundedCellWidth = Math.max(24, Math.round(cellWidth));
+    const roundedCellHeight = Math.max(16, Math.round(roundedCellWidth / aspectRatio));
     const roundedGridWidth =
       nodeData.gridCols * roundedCellWidth + Math.max(0, nodeData.gridCols - 1) * STORYBOARD_GRID_GAP_PX;
+    const roundedGridHeight =
+      nodeData.gridRows * roundedCellHeight + Math.max(0, nodeData.gridRows - 1) * FRAME_GRID_GAP_PX;
     const nodeInnerWidth = Math.max(STORYBOARD_CONTROL_ROW_WIDTH_PX, roundedGridWidth);
     const nodeWidth = Math.round(nodeInnerWidth + STORYBOARD_NODE_HORIZONTAL_PADDING_PX);
+    const nodeHeight = Math.round(
+      NODE_VERTICAL_PADDING_PX +
+      CONTROL_ROW_HEIGHT_PX +
+      CONTROL_ROW_MARGIN_BOTTOM_PX +
+      roundedGridHeight +
+      FRAME_GRID_MARGIN_BOTTOM_PX +
+      PARAM_ROW_HEIGHT_PX
+    );
 
     return {
       cellWidth: roundedCellWidth,
       gridWidth: roundedGridWidth,
       nodeWidth,
+      nodeHeight,
       cellAspectRatio: toCssAspectRatio(frameAspectRatioValue),
     };
-  }, [frameAspectRatioValue, nodeData.gridCols]);
+  }, [frameAspectRatioValue, nodeData.gridCols, nodeData.gridRows]);
 
   const requestResolution = selectedModel.resolveRequest({
     referenceImageCount: incomingImages.length,
@@ -238,65 +299,6 @@ export const StoryboardGenNode = memo(({ id, data, selected }: StoryboardGenNode
 
     updateNodeData(id, { frames: newFrames });
   }, [id, nodeData.frames, totalFrames, updateNodeData]);
-
-  useEffect(() => {
-    if (!currentNode) {
-      nodePositionRef.current = null;
-      return;
-    }
-    nodePositionRef.current = {
-      x: currentNode.position.x,
-      y: currentNode.position.y,
-    };
-  }, [currentNode]);
-
-  useEffect(() => {
-    const element = rootRef.current;
-    if (!element) {
-      return;
-    }
-
-    const resizeObserver = new ResizeObserver((entries) => {
-      const entry = entries[0];
-      if (!entry) {
-        return;
-      }
-
-      const nextSize = {
-        width: Math.round(entry.contentRect.width),
-        height: Math.round(entry.contentRect.height),
-      };
-      const previousSize = nodeSizeRef.current;
-      nodeSizeRef.current = nextSize;
-
-      if (!previousSize) {
-        return;
-      }
-
-      const dx = nextSize.width - previousSize.width;
-      const dy = nextSize.height - previousSize.height;
-
-      if (Math.abs(dx) < 1 && Math.abs(dy) < 1) {
-        return;
-      }
-
-      const currentPosition = nodePositionRef.current;
-      if (!currentPosition) {
-        return;
-      }
-
-      const nextPosition = {
-        x: currentPosition.x - dx / 2,
-        y: currentPosition.y - dy / 2,
-      };
-
-      nodePositionRef.current = nextPosition;
-      updateNodePosition(id, nextPosition);
-    });
-
-    resizeObserver.observe(element);
-    return () => resizeObserver.disconnect();
-  }, [id, updateNodePosition]);
 
   // Build prompt from frames
   const buildPrompt = useCallback((): string => {
@@ -481,7 +483,10 @@ export const StoryboardGenNode = memo(({ id, data, selected }: StoryboardGenNode
           : 'border-[rgba(255,255,255,0.22)] hover:border-[rgba(255,255,255,0.34)]'
         }
       `}
-      style={{ width: `${frameLayout.nodeWidth}px` }}
+      style={{
+        width: `${frameLayout.nodeWidth}px`,
+        height: `${frameLayout.nodeHeight}px`,
+      }}
       onClick={() => setSelectedNode(id)}
     >
       {/* Floating title */}
@@ -496,46 +501,25 @@ export const StoryboardGenNode = memo(({ id, data, selected }: StoryboardGenNode
         onTitleChange={(nextTitle) => updateNodeData(id, { displayName: nextTitle })}
       />
 
-      <div className="mb-3 text-xs text-text-muted">{totalFrames} 格</div>
-
-      {/* Grid Settings */}
-      <div className="mb-2 flex items-center gap-2">
-        <div className="flex items-center gap-1">
-          <span className="text-[10px] text-text-muted">行</span>
-          <button
-            type="button"
-            className="flex h-3 w-3 items-center justify-center rounded hover:bg-white/10"
-            onClick={(e) => { e.stopPropagation(); handleRowChange(-1); }}
-          >
-            <Minus className="h-2.5 w-2.5 text-white" />
-          </button>
-          <span className="w-4 text-center text-xs font-medium text-text-dark">{nodeData.gridRows}</span>
-          <button
-            type="button"
-            className="flex h-3 w-3 items-center justify-center rounded hover:bg-white/10"
-            onClick={(e) => { e.stopPropagation(); handleRowChange(1); }}
-          >
-            <Plus className="h-2.5 w-2.5 text-white" />
-          </button>
+      {/* Frame summary + grid settings */}
+      <div className="mb-2.5 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5">
+          <GridStepperControl
+            label="行"
+            value={nodeData.gridRows}
+            onDecrease={() => handleRowChange(-1)}
+            onIncrease={() => handleRowChange(1)}
+          />
+          <GridStepperControl
+            label="列"
+            value={nodeData.gridCols}
+            onDecrease={() => handleColChange(-1)}
+            onIncrease={() => handleColChange(1)}
+          />
         </div>
 
-        <div className="flex items-center gap-1">
-          <span className="text-[10px] text-text-muted">列</span>
-          <button
-            type="button"
-            className="flex h-3 w-3 items-center justify-center rounded hover:bg-white/10"
-            onClick={(e) => { e.stopPropagation(); handleColChange(-1); }}
-          >
-            <Minus className="h-2.5 w-2.5 text-white" />
-          </button>
-          <span className="w-4 text-center text-xs font-medium text-text-dark">{nodeData.gridCols}</span>
-          <button
-            type="button"
-            className="flex h-3 w-3 items-center justify-center rounded hover:bg-white/10"
-            onClick={(e) => { e.stopPropagation(); handleColChange(1); }}
-          >
-            <Plus className="h-2.5 w-2.5 text-white" />
-          </button>
+        <div className={GRID_SUMMARY_CLASS}>
+          {totalFrames} 格
         </div>
       </div>
 

@@ -179,6 +179,8 @@ export function NodeHeader({
           titleClassName
         )}
         title={titleText}
+        onPointerDown={(event) => event.stopPropagation()}
+        onClick={(event) => event.stopPropagation()}
         onDoubleClick={(event) => {
           event.stopPropagation();
           setIsEditingTitle(true);
