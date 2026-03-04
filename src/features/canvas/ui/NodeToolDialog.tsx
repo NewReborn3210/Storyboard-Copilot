@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, useCallback } from 'react';
 
-import { isImageEditNode, isUploadNode } from '@/features/canvas/domain/canvasNodes';
+import { isExportImageNode, isImageEditNode, isUploadNode } from '@/features/canvas/domain/canvasNodes';
 import {
   canvasEventBus,
   canvasToolProcessor,
@@ -12,6 +12,7 @@ import { UiButton, UiModal } from '@/components/ui';
 import { FormToolEditor } from './tool-editors/FormToolEditor';
 import { CropToolEditor } from './tool-editors/CropToolEditor';
 import { AnnotateToolEditor } from './tool-editors/AnnotateToolEditor';
+import { SplitStoryboardToolEditor } from './tool-editors/SplitStoryboardToolEditor';
 
 export function NodeToolDialog() {
   const activeToolDialog = useCanvasStore((state) => state.activeToolDialog);
@@ -36,7 +37,7 @@ export function NodeToolDialog() {
       return null;
     }
 
-    if (isUploadNode(sourceNode) || isImageEditNode(sourceNode)) {
+    if (isUploadNode(sourceNode) || isImageEditNode(sourceNode) || isExportImageNode(sourceNode)) {
       return sourceNode.data.imageUrl;
     }
 
@@ -88,7 +89,8 @@ export function NodeToolDialog() {
           sourceNode.id,
           result.rows,
           result.cols,
-          result.storyboardFrames
+          result.storyboardFrames,
+          result.frameAspectRatio
         );
       } else if (result.outputImageUrl) {
         const prepared = await prepareNodeImage(result.outputImageUrl);
@@ -127,6 +129,9 @@ export function NodeToolDialog() {
     if (activePlugin.editor === 'annotate') {
       return 'w-[1120px]';
     }
+    if (activePlugin.editor === 'split') {
+      return 'w-[1120px]';
+    }
     return 'w-[460px]';
   }, [activePlugin]);
 
@@ -149,6 +154,17 @@ export function NodeToolDialog() {
     if (activePlugin.editor === 'annotate' && sourceImageUrl) {
       return (
         <AnnotateToolEditor
+          plugin={activePlugin}
+          sourceImageUrl={sourceImageUrl}
+          options={options}
+          onOptionsChange={setOptions}
+        />
+      );
+    }
+
+    if (activePlugin.editor === 'split' && sourceImageUrl) {
+      return (
+        <SplitStoryboardToolEditor
           plugin={activePlugin}
           sourceImageUrl={sourceImageUrl}
           options={options}

@@ -44,7 +44,7 @@ export function ProjectManager() {
   };
 
   return (
-    <div className="w-full h-full p-8 overflow-auto">
+    <div className="ui-scrollbar h-full w-full overflow-auto p-8">
       <div className="max-w-5xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-2xl font-bold text-text-dark">{t('project.title')}</h1>

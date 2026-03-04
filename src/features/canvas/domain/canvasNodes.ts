@@ -3,6 +3,7 @@ import type { Edge, Node, XYPosition } from '@xyflow/react';
 export const CANVAS_NODE_TYPES = {
   upload: 'uploadNode',
   imageEdit: 'imageNode',
+  exportImage: 'exportImageNode',
   storyboardSplit: 'storyboardNode',
   storyboardGen: 'storyboardGenNode',
 } as const;
@@ -33,6 +34,7 @@ export interface NodeImageData {
 }
 
 export interface UploadImageNodeData extends NodeImageData {}
+export interface ExportImageNodeData extends NodeImageData {}
 
 export interface ImageEditNodeData extends NodeImageData {
   prompt: string;
@@ -48,15 +50,31 @@ export interface StoryboardFrameItem {
   id: string;
   imageUrl: string | null;
   previewImageUrl?: string | null;
+  aspectRatio?: string;
   note: string;
   order: number;
 }
 
+export interface StoryboardExportOptions {
+  showFrameIndex: boolean;
+  showFrameNote: boolean;
+  notePlacement: 'overlay' | 'bottom';
+  imageFit: 'cover' | 'contain';
+  frameIndexPrefix: string;
+  cellGap: number;
+  outerPadding: number;
+  fontSize: number;
+  backgroundColor: string;
+  textColor: string;
+}
+
 export interface StoryboardSplitNodeData {
   aspectRatio: string;
+  frameAspectRatio?: string;
   gridRows: number;
   gridCols: number;
   frames: StoryboardFrameItem[];
+  exportOptions?: StoryboardExportOptions;
   [key: string]: unknown;
 }
 
@@ -84,6 +102,7 @@ export interface StoryboardGenNodeData {
 
 export type CanvasNodeData =
   | UploadImageNodeData
+  | ExportImageNodeData
   | ImageEditNodeData
   | StoryboardSplitNodeData
   | StoryboardGenNodeData;
@@ -129,6 +148,12 @@ export function isImageEditNode(
   return node?.type === CANVAS_NODE_TYPES.imageEdit;
 }
 
+export function isExportImageNode(
+  node: CanvasNode | null | undefined
+): node is Node<ExportImageNodeData, typeof CANVAS_NODE_TYPES.exportImage> {
+  return node?.type === CANVAS_NODE_TYPES.exportImage;
+}
+
 export function isStoryboardSplitNode(
   node: CanvasNode | null | undefined
 ): node is Node<StoryboardSplitNodeData, typeof CANVAS_NODE_TYPES.storyboardSplit> {
@@ -146,7 +171,7 @@ export function nodeHasImage(node: CanvasNode | null | undefined): boolean {
     return false;
   }
 
-  if (isUploadNode(node) || isImageEditNode(node)) {
+  if (isUploadNode(node) || isImageEditNode(node) || isExportImageNode(node)) {
     return Boolean(node.data.imageUrl);
   }
 

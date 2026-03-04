@@ -1,5 +1,7 @@
 use serde::Serialize;
 use serde_json::json;
+use std::path::PathBuf;
+use base64::{engine::general_purpose::STANDARD, Engine};
 
 use crate::ai::error::AIError;
 use crate::ai::GenerateRequest;
@@ -29,6 +31,41 @@ impl Gemini31FlashAdapter {
     pub fn new() -> Self {
         Self
     }
+}
+
+fn decode_file_url_path(value: &str) -> String {
+    let raw = value.trim_start_matches("file://");
+    let normalized = if raw.starts_with('/')
+        && raw.len() > 2
+        && raw.as_bytes().get(2) == Some(&b':')
+    {
+        &raw[1..]
+    } else {
+        raw
+    };
+    normalized.replace("%20", " ")
+}
+
+fn resolve_image_base64_payload(source: &str) -> Option<String> {
+    let trimmed = source.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+
+    if let Some((meta, payload)) = trimmed.split_once(',') {
+        if meta.starts_with("data:") && meta.ends_with(";base64") && !payload.is_empty() {
+            return Some(payload.to_string());
+        }
+    }
+
+    let path = if trimmed.starts_with("file://") {
+        PathBuf::from(decode_file_url_path(trimmed))
+    } else {
+        PathBuf::from(trimmed)
+    };
+
+    let bytes = std::fs::read(path).ok()?;
+    Some(STANDARD.encode(bytes))
 }
 
 fn truncate_for_log(input: &str, max_chars: usize) -> String {
@@ -70,9 +107,7 @@ impl PPIOModelAdapter for Gemini31FlashAdapter {
                 .map(|images| {
                     images
                         .iter()
-                        .filter_map(|image| {
-                            image.split(',').nth(1).map(|payload| payload.to_string())
-                        })
+                        .filter_map(|image| resolve_image_base64_payload(image))
                         .collect::<Vec<String>>()
                 })
                 .unwrap_or_default();

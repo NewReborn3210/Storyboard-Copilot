@@ -315,7 +315,7 @@ export function CropToolEditor({ plugin, sourceImageUrl, options, onOptionsChang
         </div>
       )}
 
-      <div className="max-h-[520px] overflow-auto rounded-xl border border-[rgba(255,255,255,0.12)] bg-bg-dark p-3">
+      <div className="ui-scrollbar max-h-[520px] overflow-auto rounded-xl border border-[rgba(255,255,255,0.12)] bg-bg-dark p-3">
         <ReactCrop
           crop={crop}
           onChange={(nextCrop) => setCrop(nextCrop)}

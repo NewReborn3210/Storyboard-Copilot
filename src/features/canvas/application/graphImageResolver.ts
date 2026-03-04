@@ -1,4 +1,5 @@
 import {
+  isExportImageNode,
   isImageEditNode,
   isUploadNode,
   type CanvasEdge,
@@ -25,7 +26,7 @@ export class DefaultGraphImageResolver implements GraphImageResolver {
       return [];
     }
 
-    if (isUploadNode(node) || isImageEditNode(node)) {
+    if (isUploadNode(node) || isImageEditNode(node) || isExportImageNode(node)) {
       return node.data.imageUrl ? [node.data.imageUrl] : [];
     }
 

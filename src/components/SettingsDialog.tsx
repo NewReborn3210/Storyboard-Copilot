@@ -1,6 +1,7 @@
-import { useState, useCallback } from 'react';
-import { X, Eye, EyeOff } from 'lucide-react';
+import { useState, useCallback, useEffect } from 'react';
+import { X, Eye, EyeOff, FolderOpen, Plus, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { open } from '@tauri-apps/plugin-dialog';
 import { useSettingsStore } from '@/stores/settingsStore';
 
 interface SettingsDialogProps {
@@ -12,15 +13,70 @@ type SettingsCategory = 'providers' | 'appearance' | 'general';
 
 export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
   const { t, i18n } = useTranslation();
-  const { apiKey, setApiKey } = useSettingsStore();
+  const {
+    apiKey,
+    downloadPresetPaths,
+    setApiKey,
+    setDownloadPresetPaths,
+  } = useSettingsStore();
   const [activeCategory, setActiveCategory] = useState<SettingsCategory>('providers');
   const [localApiKey, setLocalApiKey] = useState(apiKey);
+  const [localDownloadPathInput, setLocalDownloadPathInput] = useState('');
+  const [localDownloadPresetPaths, setLocalDownloadPresetPaths] = useState(downloadPresetPaths);
   const [showApiKey, setShowApiKey] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+    setLocalApiKey(apiKey);
+    setLocalDownloadPresetPaths(downloadPresetPaths);
+    setLocalDownloadPathInput('');
+  }, [apiKey, downloadPresetPaths, isOpen]);
 
   const handleSave = useCallback(() => {
     setApiKey(localApiKey);
+    setDownloadPresetPaths(localDownloadPresetPaths);
     onClose();
-  }, [localApiKey, setApiKey, onClose]);
+  }, [localApiKey, localDownloadPresetPaths, setApiKey, setDownloadPresetPaths, onClose]);
+
+  const handlePickDownloadPath = useCallback(async () => {
+    try {
+      const selected = await open({
+        directory: true,
+        multiple: false,
+      });
+      if (!selected || Array.isArray(selected)) {
+        return;
+      }
+      setLocalDownloadPresetPaths((previous) => {
+        if (previous.includes(selected)) {
+          return previous;
+        }
+        return [...previous, selected].slice(0, 8);
+      });
+    } catch (error) {
+      console.error('Failed to pick download path', error);
+    }
+  }, []);
+
+  const handleAddDownloadPathFromInput = useCallback(() => {
+    const next = localDownloadPathInput.trim();
+    if (!next) {
+      return;
+    }
+    setLocalDownloadPresetPaths((previous) => {
+      if (previous.includes(next)) {
+        return previous;
+      }
+      return [...previous, next].slice(0, 8);
+    });
+    setLocalDownloadPathInput('');
+  }, [localDownloadPathInput]);
+
+  const handleRemoveDownloadPath = useCallback((path: string) => {
+    setLocalDownloadPresetPaths((previous) => previous.filter((value) => value !== path));
+  }, []);
 
   if (!isOpen) return null;
 
@@ -102,7 +158,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
                 </p>
               </div>
 
-              <div className="flex-1 p-6 space-y-4 overflow-y-auto">
+              <div className="ui-scrollbar flex-1 space-y-4 overflow-y-auto p-6">
                 <div
                   className="p-4 bg-bg-dark border border-border-dark rounded-lg"
                 >
@@ -184,8 +240,76 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
                 </p>
               </div>
 
-              <div className="flex-1 p-6">
-                <p className="text-text-muted text-sm">{t('settings.comingSoon')}</p>
+              <div className="ui-scrollbar flex-1 space-y-4 overflow-y-auto p-6">
+                <div className="rounded-lg border border-border-dark bg-bg-dark p-4">
+                  <div className="mb-3">
+                    <h3 className="text-sm font-medium text-text-dark">
+                      {t('settings.downloadPresetPaths')}
+                    </h3>
+                    <p className="mt-1 text-xs text-text-muted">
+                      {t('settings.downloadPresetPathsDesc')}
+                    </p>
+                  </div>
+
+                  <div className="mb-2 flex items-center gap-2">
+                    <input
+                      value={localDownloadPathInput}
+                      onChange={(event) => setLocalDownloadPathInput(event.target.value)}
+                      placeholder={t('settings.downloadPathPlaceholder')}
+                      className="h-9 flex-1 rounded border border-border-dark bg-surface-dark px-3 text-sm text-text-dark outline-none placeholder:text-text-muted"
+                    />
+                    <button
+                      type="button"
+                      className="inline-flex h-9 items-center justify-center rounded border border-border-dark bg-surface-dark px-3 text-xs text-text-dark transition-colors hover:bg-bg-dark"
+                      onClick={handleAddDownloadPathFromInput}
+                    >
+                      <Plus className="mr-1 h-3.5 w-3.5" />
+                      {t('settings.addPath')}
+                    </button>
+                    <button
+                      type="button"
+                      className="inline-flex h-9 items-center justify-center rounded border border-border-dark bg-surface-dark px-3 text-xs text-text-dark transition-colors hover:bg-bg-dark"
+                      onClick={() => {
+                        void handlePickDownloadPath();
+                      }}
+                    >
+                      <FolderOpen className="mr-1 h-3.5 w-3.5" />
+                      {t('settings.chooseFolder')}
+                    </button>
+                  </div>
+
+                  <div className="space-y-1">
+                    {localDownloadPresetPaths.length > 0 ? (
+                      localDownloadPresetPaths.map((path) => (
+                        <div
+                          key={path}
+                          className="flex items-center gap-2 rounded border border-border-dark bg-surface-dark px-2 py-1.5"
+                        >
+                          <span className="truncate text-xs text-text-dark">{path}</span>
+                          <button
+                            type="button"
+                            className="ml-auto inline-flex h-6 w-6 items-center justify-center rounded text-text-muted transition-colors hover:bg-bg-dark hover:text-text-dark"
+                            onClick={() => handleRemoveDownloadPath(path)}
+                            title={t('common.delete')}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-xs text-text-muted">{t('settings.noDownloadPresetPaths')}</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end border-t border-border-dark px-6 py-4">
+                <button
+                  onClick={handleSave}
+                  className="rounded bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent/80"
+                >
+                  {t('common.save')}
+                </button>
               </div>
             </>
           )}

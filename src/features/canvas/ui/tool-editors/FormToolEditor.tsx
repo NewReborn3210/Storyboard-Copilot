@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 
 import type { ToolFieldSchema, ToolOptions } from '@/features/canvas/tools';
-import { UiInput } from '@/components/ui';
+import { UiInput, UiSelect } from '@/components/ui';
 import type { FormToolEditorProps } from './types';
 
 function readTextOption(options: ToolOptions, key: string): string {
@@ -63,17 +63,17 @@ export function FormToolEditor({ fields, options, onOptionsChange }: FormToolEdi
       }
 
       return (
-        <select
+        <UiSelect
           value={readTextOption(options, field.key)}
           onChange={(event) => updateOption(field.key, event.target.value)}
-          className="h-10 w-full rounded-lg border border-[rgba(255,255,255,0.12)] bg-bg-dark/90 px-3 text-sm text-text-dark outline-none"
+          className="h-10 border-[rgba(255,255,255,0.12)] bg-bg-dark/90 text-sm"
         >
           {field.options.map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}
             </option>
           ))}
-        </select>
+        </UiSelect>
       );
     },
     [options, updateOption]

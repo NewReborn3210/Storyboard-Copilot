@@ -20,7 +20,7 @@
   },
   "canvas": {
     "addImage": "添加图片",
-    "splitStoryboard": "分镜切割",
+    "splitStoryboard": "切割",
     "generate": "生成",
     "toolbar": {
       "zoomIn": "放大",
@@ -57,7 +57,7 @@
     }
   },
   "split": {
-    "title": "分镜切割",
+    "title": "切割",
     "rows": "行数",
     "cols": "列数",
     "preview": "预览",
@@ -102,6 +102,12 @@
     "model": "模型",
     "enterApiKey": "输入 API Key",
     "addProvider": "添加供应商",
-    "comingSoon": "即将推出..."
+    "comingSoon": "即将推出...",
+    "downloadPresetPaths": "下载预设路径",
+    "downloadPresetPathsDesc": "用于节点工具条下载菜单中的快速保存目录（最多 8 个）",
+    "downloadPathPlaceholder": "输入目录路径，例如 D:\\\\Images\\\\Storyboard",
+    "addPath": "添加路径",
+    "chooseFolder": "选择文件夹",
+    "noDownloadPresetPaths": "暂无预设路径"
   }
 }

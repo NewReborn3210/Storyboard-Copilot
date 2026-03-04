@@ -48,7 +48,7 @@ export interface ToolExecutionContext {
 }
 
 export type ToolIconKey = 'crop' | 'annotate' | 'split';
-export type ToolEditorKind = 'form' | 'crop' | 'annotate';
+export type ToolEditorKind = 'form' | 'crop' | 'annotate' | 'split';
 
 export interface CanvasToolPlugin {
   type: NodeToolType;

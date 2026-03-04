@@ -1,7 +1,8 @@
-import { splitImage } from '@/commands/image';
+import { splitImageSource } from '@/commands/image';
 
 import type { ImageSplitGateway } from '../application/ports';
 
 export const tauriImageSplitGateway: ImageSplitGateway = {
-  split: splitImage,
+  split: (imageSource, rows, cols, lineThickness) =>
+    splitImageSource(imageSource, rows, cols, lineThickness),
 };

@@ -58,11 +58,6 @@ const STORYBOARD_GRID_GAP_PX = 2;
 const STORYBOARD_GRID_BASE_CELL_HEIGHT_PX = 78;
 const STORYBOARD_GRID_MAX_WIDTH_PX = 320;
 const STORYBOARD_CONTROL_ROW_WIDTH_PX = 274;
-const STORYBOARD_FRAME_TEXTAREA_SCROLLBAR_CLASS =
-  '[scrollbar-width:thin] [scrollbar-color:rgba(148,163,184,0.55)_transparent] ' +
-  '[&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent ' +
-  '[&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[rgba(148,163,184,0.5)] ' +
-  'hover:[&::-webkit-scrollbar-thumb]:bg-[rgba(148,163,184,0.72)]';
 
 function pickClosestAspectRatio(
   targetRatio: number,
@@ -343,7 +338,7 @@ export const StoryboardGenNode = memo(({ id, data, selected }: StoryboardGenNode
     // Use auto-positioning to avoid collisions with existing nodes
     const newNodePosition = findNodePosition(id, 220, 180);
     const newNodeId = addNode(
-      CANVAS_NODE_TYPES.imageEdit,
+      CANVAS_NODE_TYPES.exportImage,
       newNodePosition,
       {
         isGenerating: true,
@@ -546,7 +541,7 @@ export const StoryboardGenNode = memo(({ id, data, selected }: StoryboardGenNode
                 onChange={(e) => handleFrameDescriptionChange(index, e.target.value)}
                 placeholder="..."
                 wrap="soft"
-                className={`nodrag nowheel absolute inset-0 h-full w-full resize-none overflow-y-auto overflow-x-hidden bg-transparent px-1.5 py-1 text-left text-[10px] leading-4 text-text-dark placeholder:text-text-muted/40 focus:border-accent/50 focus:outline-none whitespace-pre-wrap break-words ${STORYBOARD_FRAME_TEXTAREA_SCROLLBAR_CLASS}`}
+                className="ui-scrollbar nodrag nowheel absolute inset-0 h-full w-full resize-none overflow-y-auto overflow-x-hidden bg-transparent px-1.5 py-1 text-left text-[10px] leading-4 text-text-dark placeholder:text-text-muted/40 focus:border-accent/50 focus:outline-none whitespace-pre-wrap break-words"
               />
             </div>
           ))}

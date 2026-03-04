@@ -502,7 +502,7 @@ export const NodePromptInput = memo(({ node }: NodePromptInputProps) => {
               className="absolute z-30 w-[15%] min-w-[60px] overflow-hidden rounded-xl border border-[rgba(255,255,255,0.16)] bg-surface-dark shadow-xl"
               style={{ left: pickerAnchor.left, top: pickerAnchor.top }}
             >
-              <div className="max-h-[180px] overflow-y-auto">
+              <div className="ui-scrollbar max-h-[180px] overflow-y-auto">
                 {incomingImageItems.map((item, index) => (
                   <button
                     key={`${item.imageUrl}-${index}`}

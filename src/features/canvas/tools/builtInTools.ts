@@ -1,5 +1,6 @@
 import {
   NODE_TOOL_TYPES,
+  isExportImageNode,
   isImageEditNode,
   isUploadNode,
   type CanvasNode,
@@ -8,7 +9,7 @@ import { stringifyAnnotationItems } from './annotation';
 import type { CanvasToolPlugin } from './types';
 
 function supportsImageSourceNode(node: CanvasNode): boolean {
-  return isUploadNode(node) || isImageEditNode(node);
+  return isUploadNode(node) || isImageEditNode(node) || isExportImageNode(node);
 }
 
 export const cropToolPlugin: CanvasToolPlugin = {
@@ -60,32 +61,16 @@ export const annotateToolPlugin: CanvasToolPlugin = {
 
 export const splitStoryboardToolPlugin: CanvasToolPlugin = {
   type: NODE_TOOL_TYPES.splitStoryboard,
-  label: '分镜切割',
+  label: '切割',
   icon: 'split',
-  editor: 'form',
+  editor: 'split',
   supportsNode: (node) => supportsImageSourceNode(node) && Boolean(node.data.imageUrl),
   createInitialOptions: () => ({
     rows: 3,
     cols: 3,
+    lineThickness: 6,
   }),
-  fields: [
-    {
-      key: 'rows',
-      label: '行数',
-      type: 'number',
-      min: 1,
-      max: 8,
-      step: 1,
-    },
-    {
-      key: 'cols',
-      label: '列数',
-      type: 'number',
-      min: 1,
-      max: 8,
-      step: 1,
-    },
-  ],
+  fields: [],
   execute: async (sourceImageUrl, options, context) =>
     await context.processTool(NODE_TOOL_TYPES.splitStoryboard, sourceImageUrl, options),
 };

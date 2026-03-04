@@ -40,10 +40,13 @@ import { NodeToolDialog } from './ui/NodeToolDialog';
 const DEFAULT_VIEWPORT: Viewport = { x: 0, y: 0, zoom: 1 };
 const NODE_TYPES_WITH_SOURCE_HANDLE: CanvasNodeType[] = [
   CANVAS_NODE_TYPES.upload,
+  CANVAS_NODE_TYPES.exportImage,
   CANVAS_NODE_TYPES.imageEdit,
+  CANVAS_NODE_TYPES.storyboardSplit,
   CANVAS_NODE_TYPES.storyboardGen,
 ];
 const NODE_TYPES_WITH_TARGET_HANDLE: CanvasNodeType[] = [
+  CANVAS_NODE_TYPES.exportImage,
   CANVAS_NODE_TYPES.imageEdit,
   CANVAS_NODE_TYPES.storyboardSplit,
   CANVAS_NODE_TYPES.storyboardGen,

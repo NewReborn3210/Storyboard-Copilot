@@ -4,9 +4,10 @@ import {
   type HTMLAttributes,
   type InputHTMLAttributes,
   type ReactNode,
+  type SelectHTMLAttributes,
   type TextareaHTMLAttributes,
 } from 'react';
-import { X } from 'lucide-react';
+import { Check, ChevronDown, X } from 'lucide-react';
 
 type ButtonVariant = 'primary' | 'muted' | 'ghost';
 
@@ -24,6 +25,13 @@ interface UiIconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 interface UiChipButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   active?: boolean;
 }
+
+interface UiCheckboxProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'onChange'> {
+  checked: boolean;
+  onCheckedChange?: (checked: boolean) => void;
+}
+
+interface UiSelectProps extends SelectHTMLAttributes<HTMLSelectElement> {}
 
 interface UiModalProps {
   isOpen: boolean;
@@ -121,6 +129,47 @@ export function UiInput({ className = '', ...props }: InputHTMLAttributes<HTMLIn
       className={`w-full border ui-field px-3 py-2 text-sm text-text-dark outline-none transition-colors placeholder:text-text-muted/70 focus:border-accent ${className}`}
       {...props}
     />
+  );
+}
+
+export const UiCheckbox = forwardRef<HTMLButtonElement, UiCheckboxProps>(
+  ({ className = '', checked, onCheckedChange, onClick, ...props }, ref) => (
+    <button
+      ref={ref}
+      type="button"
+      role="checkbox"
+      aria-checked={checked}
+      className={`inline-flex h-5 w-5 items-center justify-center rounded border transition-colors ${
+        checked
+          ? 'border-accent/60 bg-accent/20 text-accent'
+          : 'border-[rgba(255,255,255,0.2)] bg-bg-dark/60 text-transparent hover:border-[rgba(255,255,255,0.32)]'
+      } ${className}`}
+      onClick={(event) => {
+        onClick?.(event);
+        if (!event.defaultPrevented) {
+          onCheckedChange?.(!checked);
+        }
+      }}
+      {...props}
+    >
+      <Check className="h-3.5 w-3.5" />
+    </button>
+  )
+);
+
+UiCheckbox.displayName = 'UiCheckbox';
+
+export function UiSelect({ className = '', children, ...props }: UiSelectProps) {
+  return (
+    <div className="relative">
+      <select
+        className={`h-8 w-full appearance-none rounded-lg border border-[rgba(255,255,255,0.14)] bg-bg-dark/70 px-2 pr-7 text-xs text-text-dark outline-none transition-colors focus:border-accent ${className}`}
+        {...props}
+      >
+        {children}
+      </select>
+      <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-muted" />
+    </div>
   );
 }
 

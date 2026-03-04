@@ -18,6 +18,7 @@ import {
   type CanvasNodeData,
   type CanvasNodeType,
   type NodeToolType,
+  type StoryboardExportOptions,
   type StoryboardFrameItem,
   isStoryboardSplitNode,
 } from '@/features/canvas/domain/canvasNodes';
@@ -72,11 +73,18 @@ interface CanvasState {
     aspectRatio: string,
     previewImageUrl?: string
   ) => string | null;
+  addDerivedExportNode: (
+    sourceNodeId: string,
+    imageUrl: string,
+    aspectRatio: string,
+    previewImageUrl?: string
+  ) => string | null;
   addStoryboardSplitNode: (
     sourceNodeId: string,
     rows: number,
     cols: number,
-    frames: StoryboardFrameItem[]
+    frames: StoryboardFrameItem[],
+    frameAspectRatio?: string
   ) => string | null;
 
   updateNodeData: (nodeId: string, data: Partial<CanvasNodeData>) => void;
@@ -105,11 +113,54 @@ interface CanvasState {
   clearCanvas: () => void;
 }
 
-function normalizeEdges(rawEdges: CanvasEdge[]): CanvasEdge[] {
-  return rawEdges.map((edge) => ({
-    ...edge,
-    type: edge.type ?? 'disconnectableEdge',
-  }));
+function nodeHasSourceHandle(type: CanvasNodeType): boolean {
+  return (
+    type === CANVAS_NODE_TYPES.upload ||
+    type === CANVAS_NODE_TYPES.exportImage ||
+    type === CANVAS_NODE_TYPES.imageEdit ||
+    type === CANVAS_NODE_TYPES.storyboardSplit ||
+    type === CANVAS_NODE_TYPES.storyboardGen
+  );
+}
+
+function nodeHasTargetHandle(type: CanvasNodeType): boolean {
+  return (
+    type === CANVAS_NODE_TYPES.exportImage ||
+    type === CANVAS_NODE_TYPES.imageEdit ||
+    type === CANVAS_NODE_TYPES.storyboardSplit ||
+    type === CANVAS_NODE_TYPES.storyboardGen
+  );
+}
+
+function normalizeHandleId(value: unknown): string | undefined {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+  const trimmed = value.trim();
+  if (!trimmed || trimmed === 'null' || trimmed === 'undefined') {
+    return undefined;
+  }
+  return trimmed;
+}
+
+function normalizeEdgesWithNodes(rawEdges: CanvasEdge[], nodes: CanvasNode[]): CanvasEdge[] {
+  const nodeMap = new Map(nodes.map((node) => [node.id, node] as const));
+
+  return rawEdges
+    .filter((edge) => {
+      const sourceNode = nodeMap.get(edge.source);
+      const targetNode = nodeMap.get(edge.target);
+      if (!sourceNode || !targetNode) {
+        return false;
+      }
+      return nodeHasSourceHandle(sourceNode.type) && nodeHasTargetHandle(targetNode.type);
+    })
+    .map((edge) => ({
+      ...edge,
+      type: edge.type ?? 'disconnectableEdge',
+      sourceHandle: normalizeHandleId((edge as CanvasEdge & { sourceHandle?: unknown }).sourceHandle),
+      targetHandle: normalizeHandleId((edge as CanvasEdge & { targetHandle?: unknown }).targetHandle),
+    }));
 }
 
 function normalizeNodes(rawNodes: CanvasNode[]): CanvasNode[] {
@@ -127,13 +178,41 @@ function normalizeNodes(rawNodes: CanvasNode[]): CanvasNode[] {
 
       if (node.type === CANVAS_NODE_TYPES.storyboardSplit) {
         const frames = (mergedData as { frames?: StoryboardFrameItem[] }).frames ?? [];
+        const firstFrameAspectRatio = frames.find((frame) => typeof frame.aspectRatio === 'string')
+          ?.aspectRatio;
+        const normalizedFrameAspectRatio =
+          (typeof (mergedData as { frameAspectRatio?: unknown }).frameAspectRatio === 'string'
+            ? (mergedData as { frameAspectRatio?: string }).frameAspectRatio
+            : null) ??
+          firstFrameAspectRatio ??
+          DEFAULT_ASPECT_RATIO;
+
+        (mergedData as { frameAspectRatio: string }).frameAspectRatio = normalizedFrameAspectRatio;
         (mergedData as { frames: StoryboardFrameItem[] }).frames = frames.map((frame, index) => ({
           id: frame.id,
           imageUrl: frame.imageUrl ?? null,
           previewImageUrl: frame.previewImageUrl ?? null,
+          aspectRatio:
+            typeof frame.aspectRatio === 'string'
+              ? frame.aspectRatio
+              : normalizedFrameAspectRatio,
           note: frame.note ?? '',
           order: Number.isFinite(frame.order) ? frame.order : index,
         }));
+
+        const rawExportOptions = (mergedData as { exportOptions?: Partial<StoryboardExportOptions> })
+          .exportOptions;
+        const rawFontSize = Number.isFinite(rawExportOptions?.fontSize)
+          ? Number(rawExportOptions?.fontSize)
+          : createDefaultStoryboardExportOptions().fontSize;
+        const normalizedFontSize = rawFontSize > 20
+          ? Math.round(rawFontSize / 6)
+          : rawFontSize;
+        (mergedData as { exportOptions: StoryboardExportOptions }).exportOptions = {
+          ...createDefaultStoryboardExportOptions(),
+          ...(rawExportOptions ?? {}),
+          fontSize: Math.max(1, Math.min(20, Math.round(normalizedFontSize))),
+        };
       }
 
       if ('aspectRatio' in mergedData && !mergedData.aspectRatio) {
@@ -162,10 +241,13 @@ function normalizeHistory(history?: CanvasHistoryState): CanvasHistoryState {
     return { past: [], future: [] };
   }
 
-  const normalizeSnapshot = (snapshot: CanvasHistorySnapshot): CanvasHistorySnapshot => ({
-    nodes: normalizeNodes(snapshot.nodes),
-    edges: normalizeEdges(snapshot.edges),
-  });
+  const normalizeSnapshot = (snapshot: CanvasHistorySnapshot): CanvasHistorySnapshot => {
+    const normalizedNodes = normalizeNodes(snapshot.nodes);
+    return {
+      nodes: normalizedNodes,
+      edges: normalizeEdgesWithNodes(snapshot.edges, normalizedNodes),
+    };
+  };
 
   return {
     past: history.past.slice(-MAX_HISTORY_STEPS).map(normalizeSnapshot),
@@ -220,6 +302,21 @@ function resolveActiveToolDialog(
     return null;
   }
   return nodes.some((node) => node.id === activeToolDialog.nodeId) ? activeToolDialog : null;
+}
+
+function createDefaultStoryboardExportOptions(): StoryboardExportOptions {
+  return {
+    showFrameIndex: false,
+    showFrameNote: false,
+    notePlacement: 'overlay',
+    imageFit: 'cover',
+    frameIndexPrefix: 'S',
+    cellGap: 8,
+    outerPadding: 0,
+    fontSize: 4,
+    backgroundColor: '#0f1115',
+    textColor: '#f8fafc',
+  };
 }
 
 export const useCanvasStore = create<CanvasState>((set, get) => ({
@@ -312,7 +409,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
   setCanvasData: (nodes, edges, history) => {
     const normalizedNodes = normalizeNodes(nodes);
-    const normalizedEdges = normalizeEdges(edges);
+    const normalizedEdges = normalizeEdgesWithNodes(edges, normalizedNodes);
 
     set({
       nodes: normalizedNodes,
@@ -344,6 +441,9 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     const sourceNode = state.nodes.find((n) => n.id === source);
     const targetNode = state.nodes.find((n) => n.id === target);
     if (!sourceNode || !targetNode) {
+      return null;
+    }
+    if (!nodeHasSourceHandle(sourceNode.type) || !nodeHasTargetHandle(targetNode.type)) {
       return null;
     }
 
@@ -442,14 +542,44 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     return node.id;
   },
 
-  addStoryboardSplitNode: (sourceNodeId, rows, cols, frames) => {
+  addDerivedExportNode: (sourceNodeId, imageUrl, aspectRatio, previewImageUrl) => {
+    const state = get();
+    const position = state.findNodePosition(sourceNodeId, 220, 180);
+    const node = canvasNodeFactory.createNode(CANVAS_NODE_TYPES.exportImage, position, {
+      imageUrl,
+      previewImageUrl: previewImageUrl ?? null,
+      aspectRatio,
+    });
+
+    set({
+      nodes: [...state.nodes, node],
+      selectedNodeId: node.id,
+      activeToolDialog: null,
+      history: {
+        past: pushSnapshot(state.history.past, createSnapshot(state.nodes, state.edges)),
+        future: [],
+      },
+      dragHistorySnapshot: null,
+    });
+
+    return node.id;
+  },
+
+  addStoryboardSplitNode: (sourceNodeId, rows, cols, frames, frameAspectRatio) => {
     const state = get();
     const position = getDerivedNodePosition(state.nodes, sourceNodeId);
+    const resolvedFrameAspectRatio =
+      frameAspectRatio ??
+      frames.find((frame) => typeof frame.aspectRatio === 'string')?.aspectRatio ??
+      DEFAULT_ASPECT_RATIO;
+
     const node = canvasNodeFactory.createNode(CANVAS_NODE_TYPES.storyboardSplit, position, {
       gridRows: rows,
       gridCols: cols,
       frames,
-      aspectRatio: `${cols}:${rows}`,
+      aspectRatio: resolvedFrameAspectRatio,
+      frameAspectRatio: resolvedFrameAspectRatio,
+      exportOptions: createDefaultStoryboardExportOptions(),
     });
 
     set({

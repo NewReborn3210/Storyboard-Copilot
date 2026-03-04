@@ -4,7 +4,7 @@ import { Sparkles } from 'lucide-react';
 
 import {
   DEFAULT_ASPECT_RATIO,
-  DEFAULT_NODE_WIDTH,
+  type ExportImageNodeData,
   type ImageEditNodeData,
 } from '@/features/canvas/domain/canvasNodes';
 import {
@@ -15,7 +15,7 @@ import { useCanvasStore } from '@/stores/canvasStore';
 
 type ImageNodeProps = NodeProps & {
   id: string;
-  data: ImageEditNodeData;
+  data: ImageEditNodeData | ExportImageNodeData;
   selected?: boolean;
 };
 
@@ -28,9 +28,14 @@ export const ImageNode = memo(({ id, data, selected }: ImageNodeProps) => {
   const setSelectedNode = useCanvasStore((state) => state.setSelectedNode);
   const { zoom } = useViewport();
   const [now, setNow] = useState(() => Date.now());
+  const isGenerating = typeof data.isGenerating === 'boolean' ? data.isGenerating : false;
+  const generationStartedAt =
+    typeof data.generationStartedAt === 'number' ? data.generationStartedAt : null;
+  const generationDurationMs =
+    typeof data.generationDurationMs === 'number' ? data.generationDurationMs : 60000;
 
   useEffect(() => {
-    if (!data.isGenerating) {
+    if (!isGenerating) {
       return;
     }
 
@@ -41,19 +46,19 @@ export const ImageNode = memo(({ id, data, selected }: ImageNodeProps) => {
     return () => {
       window.clearInterval(timer);
     };
-  }, [data.isGenerating]);
+  }, [isGenerating]);
 
   const simulatedProgress = useMemo(() => {
-    if (!data.isGenerating) {
+    if (!isGenerating) {
       return 0;
     }
 
-    const startedAt = data.generationStartedAt ?? Date.now();
-    const duration = Math.max(1000, data.generationDurationMs ?? 60000);
+    const startedAt = generationStartedAt ?? Date.now();
+    const duration = Math.max(1000, generationDurationMs);
     const elapsed = Math.max(0, now - startedAt);
 
     return Math.min(elapsed / duration, 0.96);
-  }, [data.generationDurationMs, data.generationStartedAt, data.isGenerating, now]);
+  }, [generationDurationMs, generationStartedAt, isGenerating, now]);
 
   const imageSource = useMemo(() => {
     const preferOriginal = shouldUseOriginalImageByZoom(zoom);
@@ -92,7 +97,7 @@ export const ImageNode = memo(({ id, data, selected }: ImageNodeProps) => {
           </div>
         )}
 
-        {data.isGenerating && (
+        {isGenerating && (
           <div className="pointer-events-none absolute inset-0 overflow-hidden">
             <div className="absolute inset-0 bg-bg-dark/55" />
             <div

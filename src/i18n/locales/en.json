@@ -102,6 +102,12 @@
     "model": "Model",
     "enterApiKey": "Enter API Key",
     "addProvider": "Add Provider",
-    "comingSoon": "Coming soon..."
+    "comingSoon": "Coming soon...",
+    "downloadPresetPaths": "Download Preset Paths",
+    "downloadPresetPathsDesc": "Used by node toolbar download menu for quick-save directories (up to 8).",
+    "downloadPathPlaceholder": "Input folder path, e.g. D:\\\\Images\\\\Storyboard",
+    "addPath": "Add Path",
+    "chooseFolder": "Choose Folder",
+    "noDownloadPresetPaths": "No preset path yet"
   }
 }

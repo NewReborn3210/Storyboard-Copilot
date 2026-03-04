@@ -45,7 +45,12 @@ export interface AiGateway {
 }
 
 export interface ImageSplitGateway {
-  split: (imageBase64: string, rows: number, cols: number) => Promise<string[]>;
+  split: (
+    imageSource: string,
+    rows: number,
+    cols: number,
+    lineThickness: number
+  ) => Promise<string[]>;
 }
 
 export interface ToolProcessorResult {
@@ -53,6 +58,7 @@ export interface ToolProcessorResult {
   storyboardFrames?: StoryboardFrameItem[];
   rows?: number;
   cols?: number;
+  frameAspectRatio?: string;
 }
 
 export interface ToolProcessor {

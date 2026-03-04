@@ -5,12 +5,12 @@ import {
 } from '../domain/canvasNodes';
 import {
   canvasToDataUrl,
-  extractBase64Payload,
-  imageUrlToDataUrl,
+  detectAspectRatio,
   loadImageElement,
   parseAspectRatio,
-  prepareNodeImage,
+  persistImageLocally,
 } from './imageData';
+import { cropImageSource } from '@/commands/image';
 import { drawAnnotations, parseAnnotationItems } from '../tools/annotation';
 import type {
   IdGenerator,
@@ -30,29 +30,48 @@ export class CanvasToolProcessor implements ToolProcessor {
     sourceImageUrl: string,
     options: Record<string, unknown>
   ): Promise<ToolProcessorResult> {
-    const normalizedSource = await imageUrlToDataUrl(sourceImageUrl);
+    if (toolType === NODE_TOOL_TYPES.splitStoryboard) {
+      return await this.splitStoryboard(
+        sourceImageUrl,
+        Number(options.rows ?? 3),
+        Number(options.cols ?? 3),
+        Number(options.lineThickness ?? 0)
+      );
+    }
 
     switch (toolType) {
       case NODE_TOOL_TYPES.crop:
         return {
-          outputImageUrl: await this.cropImage(normalizedSource, options),
+          outputImageUrl: await this.cropImage(sourceImageUrl, options),
         };
       case NODE_TOOL_TYPES.annotate:
+        // Keep annotate on frontend for now because it supports free-form vector annotations.
+        // Prefer local source first to avoid CORS taint and repeated remote fetches.
         return {
-          outputImageUrl: await this.annotateImage(normalizedSource, options),
+          outputImageUrl: await this.annotateImage(
+            await persistImageLocally(sourceImageUrl),
+            options
+          ),
         };
-      case NODE_TOOL_TYPES.splitStoryboard:
-        return await this.splitStoryboard(
-          normalizedSource,
-          Number(options.rows ?? 3),
-          Number(options.cols ?? 3)
-        );
       default:
         throw new Error('不支持的工具类型');
     }
   }
 
   private async cropImage(sourceImage: string, options: Record<string, unknown>): Promise<string> {
+    try {
+      return await cropImageSource({
+        source: sourceImage,
+        aspectRatio: String(options.aspectRatio ?? '1:1'),
+        cropX: Number(options.cropX),
+        cropY: Number(options.cropY),
+        cropWidth: Number(options.cropWidth),
+        cropHeight: Number(options.cropHeight),
+      });
+    } catch {
+      // Fallback to local canvas implementation when backend command is unavailable.
+    }
+
     const aspectRatio = String(options.aspectRatio ?? '1:1');
     const targetRatio = parseAspectRatio(aspectRatio);
     const image = await loadImageElement(sourceImage);
@@ -187,69 +206,147 @@ export class CanvasToolProcessor implements ToolProcessor {
   private async splitStoryboard(
     sourceImage: string,
     rows: number,
-    cols: number
+    cols: number,
+    lineThickness: number
   ): Promise<ToolProcessorResult> {
-    if (rows <= 0 || cols <= 0) {
+    const normalizedRows = Number.isFinite(rows) ? rows : 3;
+    const normalizedCols = Number.isFinite(cols) ? cols : 3;
+    const normalizedLineThickness = Number.isFinite(lineThickness) ? lineThickness : 0;
+
+    const safeRows = Math.max(1, Math.floor(normalizedRows));
+    const safeCols = Math.max(1, Math.floor(normalizedCols));
+    const safeLineThickness = Math.max(0, Math.floor(normalizedLineThickness));
+
+    if (safeRows <= 0 || safeCols <= 0) {
       throw new Error('分镜行列必须大于 0');
     }
 
-    const base64Payload = extractBase64Payload(sourceImage);
-
     let outputs: string[];
     try {
-      outputs = await this.splitGateway.split(base64Payload, rows, cols);
+      outputs = await this.splitGateway.split(
+        sourceImage,
+        safeRows,
+        safeCols,
+        safeLineThickness
+      );
     } catch {
-      outputs = await this.localSplit(sourceImage, rows, cols);
+      // Fallback when Tauri command is unavailable or fails.
+      outputs = await this.localSplit(sourceImage, safeRows, safeCols, safeLineThickness);
     }
 
-    const frames: StoryboardFrameItem[] = await Promise.all(
-      outputs.map(async (imageUrl, index) => {
-        const prepared = await prepareNodeImage(imageUrl, 384);
-        return {
-          id: this.idGenerator.next(),
-          imageUrl: prepared.imageUrl,
-          previewImageUrl: prepared.previewImageUrl,
-          note: '',
-          order: index,
-        };
-      })
+    const persistedFrameImages = await Promise.all(
+      outputs.map(async (imageUrl) => await persistImageLocally(imageUrl))
     );
+
+    let frameAspectRatio: string | undefined;
+    const firstFrameImage = persistedFrameImages[0];
+    if (firstFrameImage) {
+      try {
+        frameAspectRatio = await detectAspectRatio(firstFrameImage);
+      } catch {
+        frameAspectRatio = undefined;
+      }
+    }
+
+    const resolvedFrameAspectRatio = frameAspectRatio ?? `${safeCols}:${safeRows}`;
+    const frames: StoryboardFrameItem[] = persistedFrameImages.map((imageUrl, index) => ({
+      id: this.idGenerator.next(),
+      imageUrl,
+      previewImageUrl: imageUrl,
+      aspectRatio: resolvedFrameAspectRatio,
+      note: '',
+      order: index,
+    }));
 
     return {
       storyboardFrames: frames,
-      rows,
-      cols,
+      rows: safeRows,
+      cols: safeCols,
+      frameAspectRatio: resolvedFrameAspectRatio,
     };
   }
 
-  private async localSplit(sourceImage: string, rows: number, cols: number): Promise<string[]> {
-    const image = await loadImageElement(sourceImage);
-    const cellWidth = Math.floor(image.naturalWidth / cols);
-    const cellHeight = Math.floor(image.naturalHeight / rows);
+  private splitIntoSegments(totalSize: number, segmentCount: number): number[] {
+    const baseSize = Math.floor(totalSize / segmentCount);
+    const remainder = totalSize % segmentCount;
 
-    const canvas = document.createElement('canvas');
-    canvas.width = cellWidth;
-    canvas.height = cellHeight;
-    const context = canvas.getContext('2d');
-    if (!context) {
-      throw new Error('无法初始化画布');
+    return Array.from(
+      { length: segmentCount },
+      (_item, index) => baseSize + (index < remainder ? 1 : 0)
+    );
+  }
+
+  private async localSplit(
+    sourceImage: string,
+    rows: number,
+    cols: number,
+    lineThickness: number
+  ): Promise<string[]> {
+    const image = await loadImageElement(sourceImage);
+
+    const maxLineByWidth =
+      cols > 1 ? Math.floor((image.naturalWidth - cols) / (cols - 1)) : lineThickness;
+    const maxLineByHeight =
+      rows > 1 ? Math.floor((image.naturalHeight - rows) / (rows - 1)) : lineThickness;
+    const maxAllowedLine = Math.max(0, Math.min(maxLineByWidth, maxLineByHeight));
+    const resolvedLineThickness = Math.min(Math.max(0, lineThickness), maxAllowedLine);
+
+    const usableWidth = image.naturalWidth - (cols - 1) * resolvedLineThickness;
+    const usableHeight = image.naturalHeight - (rows - 1) * resolvedLineThickness;
+
+    if (usableWidth < cols || usableHeight < rows) {
+      throw new Error('分割线过粗，无法完成切割');
     }
+
+    const columnWidths = this.splitIntoSegments(usableWidth, cols);
+    const rowHeights = this.splitIntoSegments(usableHeight, rows);
 
     const results: string[] = [];
 
+    const yOffsets: number[] = [];
+    let yCursor = 0;
+    for (let row = 0; row < rows; row += 1) {
+      yOffsets.push(yCursor);
+      yCursor += rowHeights[row];
+      if (row < rows - 1) {
+        yCursor += resolvedLineThickness;
+      }
+    }
+
+    const xOffsets: number[] = [];
+    let xCursor = 0;
+    for (let col = 0; col < cols; col += 1) {
+      xOffsets.push(xCursor);
+      xCursor += columnWidths[col];
+      if (col < cols - 1) {
+        xCursor += resolvedLineThickness;
+      }
+    }
+
     for (let row = 0; row < rows; row += 1) {
       for (let col = 0; col < cols; col += 1) {
-        context.clearRect(0, 0, canvas.width, canvas.height);
+        const targetWidth = columnWidths[col];
+        const targetHeight = rowHeights[row];
+
+        const canvas = document.createElement('canvas');
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
+
+        const context = canvas.getContext('2d');
+        if (!context) {
+          throw new Error('无法初始化画布');
+        }
+
         context.drawImage(
           image,
-          col * cellWidth,
-          row * cellHeight,
-          cellWidth,
-          cellHeight,
+          xOffsets[col],
+          yOffsets[row],
+          targetWidth,
+          targetHeight,
           0,
           0,
-          cellWidth,
-          cellHeight
+          targetWidth,
+          targetHeight
         );
         results.push(canvasToDataUrl(canvas));
       }

@@ -28,10 +28,20 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             image::split_image,
+            image::split_image_source,
+            image::prepare_node_image_source,
+            image::crop_image_source,
+            image::merge_storyboard_images,
             image::load_image,
             image::persist_image_source,
+            image::persist_image_binary,
+            image::save_image_source_to_downloads,
+            image::save_image_source_to_path,
+            image::save_image_source_to_directory,
+            image::copy_image_source_to_clipboard,
             ai_commands::set_api_key,
             ai_commands::generate_image,
             ai_commands::list_models,

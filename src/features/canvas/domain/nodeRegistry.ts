@@ -5,6 +5,7 @@ import {
   type ImageSize,
   type CanvasNodeData,
   type CanvasNodeType,
+  type ExportImageNodeData,
   type ImageEditNodeData,
   type StoryboardSplitNodeData,
   type StoryboardGenNodeData,
@@ -67,6 +68,22 @@ const imageEditNodeDefinition: CanvasNodeDefinition<ImageEditNodeData> = {
   }),
 };
 
+const exportImageNodeDefinition: CanvasNodeDefinition<ExportImageNodeData> = {
+  type: CANVAS_NODE_TYPES.exportImage,
+  menuLabelKey: 'node.menu.uploadImage',
+  menuIcon: 'upload',
+  visibleInMenu: false,
+  capabilities: {
+    toolbar: true,
+    promptInput: false,
+  },
+  createDefaultData: () => ({
+    imageUrl: null,
+    previewImageUrl: null,
+    aspectRatio: DEFAULT_ASPECT_RATIO,
+  }),
+};
+
 const storyboardSplitDefinition: CanvasNodeDefinition<StoryboardSplitNodeData> = {
   type: CANVAS_NODE_TYPES.storyboardSplit,
   menuLabelKey: 'node.menu.storyboard',
@@ -78,9 +95,22 @@ const storyboardSplitDefinition: CanvasNodeDefinition<StoryboardSplitNodeData> =
   },
   createDefaultData: () => ({
     aspectRatio: DEFAULT_ASPECT_RATIO,
+    frameAspectRatio: DEFAULT_ASPECT_RATIO,
     gridRows: 2,
     gridCols: 2,
     frames: [],
+    exportOptions: {
+      showFrameIndex: false,
+      showFrameNote: false,
+      notePlacement: 'overlay',
+      imageFit: 'cover',
+      frameIndexPrefix: 'S',
+      cellGap: 8,
+      outerPadding: 0,
+      fontSize: 4,
+      backgroundColor: '#0f1115',
+      textColor: '#f8fafc',
+    },
   }),
 };
 
@@ -112,6 +142,7 @@ const storyboardGenNodeDefinition: CanvasNodeDefinition<StoryboardGenNodeData> =
 export const canvasNodeDefinitions: Record<CanvasNodeType, CanvasNodeDefinition> = {
   [CANVAS_NODE_TYPES.upload]: uploadNodeDefinition,
   [CANVAS_NODE_TYPES.imageEdit]: imageEditNodeDefinition,
+  [CANVAS_NODE_TYPES.exportImage]: exportImageNodeDefinition,
   [CANVAS_NODE_TYPES.storyboardSplit]: storyboardSplitDefinition,
   [CANVAS_NODE_TYPES.storyboardGen]: storyboardGenNodeDefinition,
 };

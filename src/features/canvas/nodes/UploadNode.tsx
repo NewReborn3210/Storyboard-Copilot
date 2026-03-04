@@ -12,7 +12,6 @@ import { Upload } from 'lucide-react';
 
 import {
   DEFAULT_ASPECT_RATIO,
-  DEFAULT_NODE_WIDTH,
   type UploadImageNodeData,
 } from '@/features/canvas/domain/canvasNodes';
 import { canvasEventBus } from '@/features/canvas/application/canvasServices';
@@ -43,8 +42,14 @@ export const UploadNode = memo(({ id, data, selected }: UploadNodeProps) => {
 
   const processFile = useCallback(
     async (file: File) => {
-      const fileDataUrl = await readFileAsDataUrl(file);
-      const prepared = await prepareNodeImage(fileDataUrl);
+      const tauriFilePath =
+        (file as File & { path?: string }).path;
+      const source =
+        typeof tauriFilePath === 'string' && tauriFilePath.trim().length > 0
+          ? tauriFilePath
+          : await readFileAsDataUrl(file);
+
+      const prepared = await prepareNodeImage(source);
       updateNodeData(id, {
         imageUrl: prepared.imageUrl,
         previewImageUrl: prepared.previewImageUrl,

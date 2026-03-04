@@ -1,6 +1,10 @@
 import { convertFileSrc, isTauri } from '@tauri-apps/api/core';
 
-import { loadImage, persistImageSource } from '@/commands/image';
+import {
+  loadImage,
+  persistImageSource,
+  prepareNodeImageSource,
+} from '@/commands/image';
 
 export function parseAspectRatio(value: string): number {
   const [width, height] = value.split(':').map((item) => Number(item));
@@ -115,6 +119,13 @@ export async function persistImageLocally(source: string): Promise<string> {
 export async function loadImageElement(source: string): Promise<HTMLImageElement> {
   const image = new Image();
   const displaySource = resolveImageDisplayUrl(source);
+  if (
+    displaySource.startsWith('http://') ||
+    displaySource.startsWith('https://') ||
+    displaySource.startsWith('asset:')
+  ) {
+    image.crossOrigin = 'anonymous';
+  }
 
   return await new Promise((resolve, reject) => {
     image.onload = () => resolve(image);
@@ -240,6 +251,20 @@ export async function prepareNodeImage(
   imageUrl: string,
   maxPreviewDimension = DEFAULT_PREVIEW_MAX_DIMENSION
 ): Promise<PreparedNodeImage> {
+  if (isTauri()) {
+    const safeMaxDimension = Math.max(64, Math.floor(maxPreviewDimension));
+    try {
+      const prepared = await prepareNodeImageSource(imageUrl, safeMaxDimension);
+      return {
+        imageUrl: prepared.imagePath,
+        previewImageUrl: prepared.previewImagePath,
+        aspectRatio: prepared.aspectRatio,
+      };
+    } catch {
+      // fallback to browser path for compatibility
+    }
+  }
+
   const persistedImagePath = await persistImageLocally(imageUrl);
   const normalizedDataUrl = await imageUrlToDataUrl(persistedImagePath);
   const image = await loadImageElement(normalizedDataUrl);

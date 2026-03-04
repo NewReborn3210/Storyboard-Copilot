@@ -6,6 +6,7 @@ import { StoryboardNode } from './StoryboardNode';
 import { UploadNode } from './UploadNode';
 
 export const nodeTypes: NodeTypes = {
+  exportImageNode: ImageNode,
   imageNode: ImageNode,
   storyboardGenNode: StoryboardGenNode,
   storyboardNode: StoryboardNode,

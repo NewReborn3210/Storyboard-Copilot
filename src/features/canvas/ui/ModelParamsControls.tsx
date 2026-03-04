@@ -298,7 +298,7 @@ export const ModelParamsControls = memo(({
           style={buildPanelStyle(modelPanelAnchor, modelPanelAlign)}
         >
           <UiPanel className={modelPanelClassName}>
-            <div className="max-h-[300px] space-y-1 overflow-y-auto pr-1">
+            <div className="ui-scrollbar max-h-[300px] space-y-1 overflow-y-auto pr-1">
               {imageModels.map((model) => {
                 const provider = getModelProvider(model.providerId);
                 const active = model.id === selectedModel.id;

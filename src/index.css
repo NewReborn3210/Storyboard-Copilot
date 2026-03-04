@@ -57,6 +57,29 @@ body {
   color: var(--text);
 }
 
+.ui-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.56) transparent;
+}
+
+.ui-scrollbar::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+.ui-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.ui-scrollbar::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  background: rgba(148, 163, 184, 0.5);
+}
+
+.ui-scrollbar:hover::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.72);
+}
+
 .react-flow__node {
   border-radius: 8px;
 }
