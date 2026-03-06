@@ -159,6 +159,8 @@
     "providersDesc": "配置 AI 服务商的 API 密钥",
     "appearance": "外观",
     "appearanceDesc": "自定义应用外观",
+    "about": "关于",
+    "aboutDesc": "应用信息",
     "general": "通用",
     "generalDesc": "通用设置",
     "apiKey": "API Key",
@@ -186,12 +188,21 @@
     "storyboardGenKeepStyleConsistentDesc": "启用后，分镜生成提示词会追加“图片风格与参考图保持一致”。",
     "storyboardGenDisableTextInImage": "分镜图禁止生成描述文本",
     "storyboardGenDisableTextInImageDesc": "启用后，分镜生成提示词会追加“禁止添加描述文本”。",
+    "ignoreAtTagWhenCopyingAndGenerating": "复制/保存文本时忽略 @ 标签",
+    "ignoreAtTagWhenCopyingAndGeneratingDesc": "启用后，复制文本和写入图片分镜元数据时会忽略类似“@图1”的标签；发送生成请求时仅移除“@”并保留“图1”。",
     "useUploadFilenameAsNodeTitle": "上传节点自动使用文件名作为标题",
     "useUploadFilenameAsNodeTitleDesc": "启用后，新上传图片会默认使用文件名作为节点标题（仍可双击手动重命名）。",
     "downloadPathPlaceholder": "输入目录路径，例如 /Users/name/Pictures/Storyboard 或 D:\\\\Images\\\\Storyboard",
     "addPath": "添加路径",
     "chooseFolder": "选择文件夹",
     "noDownloadPresetPaths": "暂无预设路径",
-    "getApiKeyLink": "点击这里获取密钥"
+    "getApiKeyLink": "点击这里获取密钥",
+    "aboutAppName": "分镜助手",
+    "aboutIntro": "基于节点画布的 AI 分镜工作台，一站式完成图片生成、编辑与分镜流程。",
+    "aboutVersionLabel": "版本",
+    "aboutVersionUnknown": "未知",
+    "aboutAuthorLabel": "作者",
+    "aboutAuthor": "痕继痕迹",
+    "aboutRepositoryLabel": "项目仓库"
   }
 }

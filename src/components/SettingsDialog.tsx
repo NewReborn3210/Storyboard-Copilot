@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { X, Eye, EyeOff, FolderOpen, Plus, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { getVersion } from '@tauri-apps/api/app';
 import { open } from '@tauri-apps/plugin-dialog';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { UiCheckbox, UiSelect } from '@/components/ui';
@@ -13,7 +14,7 @@ interface SettingsDialogProps {
   onClose: () => void;
 }
 
-type SettingsCategory = 'providers' | 'appearance' | 'general';
+type SettingsCategory = 'providers' | 'appearance' | 'general' | 'about';
 
 export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
   const { t, i18n } = useTranslation();
@@ -23,6 +24,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
     useUploadFilenameAsNodeTitle,
     storyboardGenKeepStyleConsistent,
     storyboardGenDisableTextInImage,
+    ignoreAtTagWhenCopyingAndGenerating,
     uiRadiusPreset,
     themeTonePreset,
     accentColor,
@@ -31,12 +33,14 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
     setUseUploadFilenameAsNodeTitle,
     setStoryboardGenKeepStyleConsistent,
     setStoryboardGenDisableTextInImage,
+    setIgnoreAtTagWhenCopyingAndGenerating,
     setUiRadiusPreset,
     setThemeTonePreset,
     setAccentColor,
   } = useSettingsStore();
   const providers = useMemo(() => listModelProviders(), []);
   const [activeCategory, setActiveCategory] = useState<SettingsCategory>('general');
+  const [appVersion, setAppVersion] = useState<string>('');
   const [localApiKeys, setLocalApiKeys] = useState<Record<string, string>>(apiKeys);
   const [localDownloadPathInput, setLocalDownloadPathInput] = useState('');
   const [localDownloadPresetPaths, setLocalDownloadPresetPaths] = useState(downloadPresetPaths);
@@ -48,11 +52,33 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
   const [localStoryboardGenDisableTextInImage, setLocalStoryboardGenDisableTextInImage] = useState(
     storyboardGenDisableTextInImage
   );
+  const [localIgnoreAtTagWhenCopyingAndGenerating, setLocalIgnoreAtTagWhenCopyingAndGenerating] =
+    useState(ignoreAtTagWhenCopyingAndGenerating);
   const [localUiRadiusPreset, setLocalUiRadiusPreset] = useState(uiRadiusPreset);
   const [localThemeTonePreset, setLocalThemeTonePreset] = useState(themeTonePreset);
   const [localAccentColor, setLocalAccentColor] = useState(accentColor);
   const [revealedApiKeys, setRevealedApiKeys] = useState<Record<string, boolean>>({});
   const { shouldRender, isVisible } = useDialogTransition(isOpen, UI_DIALOG_TRANSITION_MS);
+
+  useEffect(() => {
+    let mounted = true;
+    const loadAppVersion = async () => {
+      try {
+        const version = await getVersion();
+        if (mounted) {
+          setAppVersion(version);
+        }
+      } catch {
+        if (mounted) {
+          setAppVersion('');
+        }
+      }
+    };
+    void loadAppVersion();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!isOpen) {
@@ -63,6 +89,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
     setLocalUseUploadFilenameAsNodeTitle(useUploadFilenameAsNodeTitle);
     setLocalStoryboardGenKeepStyleConsistent(storyboardGenKeepStyleConsistent);
     setLocalStoryboardGenDisableTextInImage(storyboardGenDisableTextInImage);
+    setLocalIgnoreAtTagWhenCopyingAndGenerating(ignoreAtTagWhenCopyingAndGenerating);
     setLocalUiRadiusPreset(uiRadiusPreset);
     setLocalThemeTonePreset(themeTonePreset);
     setLocalAccentColor(accentColor);
@@ -75,6 +102,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
     useUploadFilenameAsNodeTitle,
     storyboardGenKeepStyleConsistent,
     storyboardGenDisableTextInImage,
+    ignoreAtTagWhenCopyingAndGenerating,
     uiRadiusPreset,
     themeTonePreset,
     accentColor,
@@ -88,6 +116,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
     setUseUploadFilenameAsNodeTitle(localUseUploadFilenameAsNodeTitle);
     setStoryboardGenKeepStyleConsistent(localStoryboardGenKeepStyleConsistent);
     setStoryboardGenDisableTextInImage(localStoryboardGenDisableTextInImage);
+    setIgnoreAtTagWhenCopyingAndGenerating(localIgnoreAtTagWhenCopyingAndGenerating);
     setUiRadiusPreset(localUiRadiusPreset);
     setThemeTonePreset(localThemeTonePreset);
     setAccentColor(localAccentColor);
@@ -98,6 +127,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
     localUseUploadFilenameAsNodeTitle,
     localStoryboardGenKeepStyleConsistent,
     localStoryboardGenDisableTextInImage,
+    localIgnoreAtTagWhenCopyingAndGenerating,
     localUiRadiusPreset,
     localThemeTonePreset,
     localAccentColor,
@@ -107,6 +137,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
     setUseUploadFilenameAsNodeTitle,
     setStoryboardGenKeepStyleConsistent,
     setStoryboardGenDisableTextInImage,
+    setIgnoreAtTagWhenCopyingAndGenerating,
     setUiRadiusPreset,
     setThemeTonePreset,
     setAccentColor,
@@ -219,6 +250,20 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
               `}
             >
               <span className="text-sm">{t('settings.appearance')}</span>
+            </button>
+
+            <button
+              onClick={() => setActiveCategory('about')}
+              className={`
+                w-full flex items-center gap-3 px-4 py-2.5 text-left
+                transition-colors
+                ${activeCategory === 'about'
+                  ? 'bg-accent/10 text-text-dark border-l-2 border-accent'
+                  : 'text-text-muted hover:bg-bg-dark hover:text-text-dark'
+                }
+              `}
+            >
+              <span className="text-sm">{t('settings.about')}</span>
             </button>
           </nav>
         </div>
@@ -437,6 +482,26 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
                 <div className="rounded-lg border border-border-dark bg-bg-dark p-4">
                   <div className="flex items-start gap-3">
                     <UiCheckbox
+                      checked={localIgnoreAtTagWhenCopyingAndGenerating}
+                      onCheckedChange={(checked) =>
+                        setLocalIgnoreAtTagWhenCopyingAndGenerating(checked)
+                      }
+                      className="mt-0.5"
+                    />
+                    <div>
+                      <h3 className="text-sm font-medium text-text-dark">
+                        {t('settings.ignoreAtTagWhenCopyingAndGenerating')}
+                      </h3>
+                      <p className="mt-1 text-xs text-text-muted">
+                        {t('settings.ignoreAtTagWhenCopyingAndGeneratingDesc')}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-lg border border-border-dark bg-bg-dark p-4">
+                  <div className="flex items-start gap-3">
+                    <UiCheckbox
                       checked={localStoryboardGenDisableTextInImage}
                       onCheckedChange={(checked) => setLocalStoryboardGenDisableTextInImage(checked)}
                       className="mt-0.5"
@@ -538,6 +603,81 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
                   className="rounded bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent/80"
                 >
                   {t('common.save')}
+                </button>
+              </div>
+            </>
+          )}
+
+          {activeCategory === 'about' && (
+            <>
+              <div className="px-6 py-5 border-b border-border-dark">
+                <h2 className="text-lg font-semibold text-text-dark">
+                  {t('settings.about')}
+                </h2>
+                <p className="text-sm text-text-muted mt-1">
+                  {t('settings.aboutDesc')}
+                </p>
+              </div>
+
+              <div className="ui-scrollbar flex-1 space-y-4 overflow-y-auto p-6">
+                <div className="rounded-lg border border-border-dark bg-bg-dark p-4">
+                  <div className="flex items-start gap-4">
+                    <img
+                      src="/app-icon.png"
+                      alt={t('settings.aboutAppName')}
+                      className="h-14 w-14 rounded-lg border border-border-dark object-cover"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <a
+                        href="https://space.bilibili.com/39337803"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-base font-semibold text-accent hover:underline"
+                      >
+                        {t('settings.aboutAppName')}
+                      </a>
+                      <p className="mt-1 text-sm text-text-muted">
+                        {t('settings.aboutIntro')}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-lg border border-border-dark bg-bg-dark p-4 space-y-2 text-sm">
+                  <p className="text-text-dark">
+                    {t('settings.aboutVersionLabel')}: <span className="text-text-muted">{appVersion || t('settings.aboutVersionUnknown')}</span>
+                  </p>
+                  <p className="text-text-dark">
+                    {t('settings.aboutAuthorLabel')}:{' '}
+                    <a
+                      href="https://space.bilibili.com/39337803"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-accent hover:underline"
+                    >
+                      {t('settings.aboutAuthor')}
+                    </a>
+                  </p>
+                  <p className="text-text-dark">
+                    {t('settings.aboutRepositoryLabel')}:{' '}
+                    <a
+                      href="https://github.com/henjicc/Storyboard-Copilot"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-accent hover:underline break-all"
+                    >
+                      https://github.com/henjicc/Storyboard-Copilot
+                    </a>
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex justify-end border-t border-border-dark px-6 py-4">
+                <button
+                  onClick={onClose}
+                  className="rounded bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent/80"
+                >
+                  {t('common.close')}
                 </button>
               </div>
             </>

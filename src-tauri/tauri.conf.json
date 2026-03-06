@@ -14,9 +14,13 @@
     "macOSPrivateApi": true,
     "windows": [
       {
+<<<<<<< HEAD
         "label": "main",
         "create": false,
         "title": "分镜助手 Storyboard-Copilot",
+=======
+        "title": "分镜助手",
+>>>>>>> 491a6c3c40853ea8b1b639be85e718cf55e280ea
         "width": 1280,
         "height": 800,
         "minWidth": 960,
@@ -45,6 +49,9 @@
     "active": true,
     "targets": "all",
     "windows": {
+      "wix": {
+        "language": "zh-CN"
+      },
       "nsis": {
         "languages": [
           "SimpChinese",

@@ -372,6 +372,7 @@ const FrameCard = memo(
             });
           }}
           onMouseDown={(event) => event.stopPropagation()}
+          onWheelCapture={(event) => event.stopPropagation()}
           placeholder={`分镜 ${String(index + 1).padStart(2, '0')} 描述`}
           className="ui-scrollbar nodrag nowheel h-10 w-full resize-none overflow-y-auto border-0 border-t border-[rgba(255,255,255,0.12)] bg-bg-dark/90 px-2 py-1 text-[10px] text-text-dark outline-none focus:border-accent"
         />
@@ -886,7 +887,10 @@ export const StoryboardNode = memo(({ id, data, selected, width, height }: Story
         onTitleChange={(nextTitle) => updateNodeData(id, { displayName: nextTitle })}
       />
 
-      <div className="ui-scrollbar min-h-0 flex-1 overflow-auto">
+      <div
+        className="ui-scrollbar nowheel min-h-0 flex-1 overflow-auto"
+        onWheelCapture={(event) => event.stopPropagation()}
+      >
         <div
           className="grid overflow-hidden rounded-lg border border-[rgba(255,255,255,0.16)] bg-[rgba(255,255,255,0.14)]"
           style={{
@@ -920,12 +924,16 @@ export const StoryboardNode = memo(({ id, data, selected, width, height }: Story
         ? createPortal(
           <div
             ref={pickerMenuRef}
-            className="fixed z-[140] w-[120px] overflow-hidden rounded-xl border border-[rgba(255,255,255,0.16)] bg-surface-dark shadow-xl"
+            className="nowheel fixed z-[140] w-[120px] overflow-hidden rounded-xl border border-[rgba(255,255,255,0.16)] bg-surface-dark shadow-xl"
             style={{ left: `${pickerState.x}px`, top: `${pickerState.y}px` }}
             onMouseDown={(event) => event.stopPropagation()}
+            onWheelCapture={(event) => event.stopPropagation()}
           >
             {incomingImageItems.length > 0 ? (
-              <div className="ui-scrollbar max-h-[180px] overflow-y-auto">
+              <div
+                className="ui-scrollbar nowheel max-h-[180px] overflow-y-auto"
+                onWheelCapture={(event) => event.stopPropagation()}
+              >
                 {incomingImageItems.map((item) => (
                   <button
                     key={`${pickerState.frameId}-${item.imageUrl}`}

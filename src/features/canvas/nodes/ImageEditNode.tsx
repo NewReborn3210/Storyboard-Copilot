@@ -621,11 +621,15 @@ export const ImageEditNode = memo(({ id, data, selected, width, height }: ImageE
 
         {showImagePicker && incomingImageItems.length > 0 && (
           <div
-            className="absolute z-30 w-[120px] overflow-hidden rounded-xl border border-[rgba(255,255,255,0.16)] bg-surface-dark shadow-xl"
+            className="nowheel absolute z-30 w-[120px] overflow-hidden rounded-xl border border-[rgba(255,255,255,0.16)] bg-surface-dark shadow-xl"
             style={{ left: pickerAnchor.left, top: pickerAnchor.top }}
             onMouseDown={(event) => event.stopPropagation()}
+            onWheelCapture={(event) => event.stopPropagation()}
           >
-            <div className="ui-scrollbar max-h-[180px] overflow-y-auto">
+            <div
+              className="ui-scrollbar nowheel max-h-[180px] overflow-y-auto"
+              onWheelCapture={(event) => event.stopPropagation()}
+            >
               {incomingImageItems.map((item, index) => (
                 <button
                   key={`${item.imageUrl}-${index}`}
