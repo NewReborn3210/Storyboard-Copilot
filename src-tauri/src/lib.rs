@@ -11,7 +11,6 @@ use tauri::Manager;
 use tracing::{info, warn};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-const SPLASH_WINDOW_LABEL: &str = "splash";
 const MAIN_WINDOW_LABEL: &str = "main";
 const FRONTEND_READY_TIMEOUT_MS: u64 = 12_000;
 
@@ -61,7 +60,7 @@ fn setup_logging() {
     info!("Storyboard Copilot starting...");
 }
 
-fn show_main_and_close_splash(app: &tauri::AppHandle) {
+fn show_main_window(app: &tauri::AppHandle) {
     if let Some(main_window) = app.get_webview_window(MAIN_WINDOW_LABEL) {
         if let Err(err) = main_window.show() {
             warn!("failed to show main window: {err}");
@@ -72,17 +71,11 @@ fn show_main_and_close_splash(app: &tauri::AppHandle) {
     } else {
         warn!("main window not found while trying to reveal UI");
     }
-
-    if let Some(splash_window) = app.get_webview_window(SPLASH_WINDOW_LABEL) {
-        if let Err(err) = splash_window.close() {
-            warn!("failed to close splash window: {err}");
-        }
-    }
 }
 
 #[tauri::command]
 fn frontend_ready(app: tauri::AppHandle) {
-    show_main_and_close_splash(&app);
+    show_main_window(&app);
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -132,35 +125,21 @@ pub fn run() {
                 }
             }
 
-            tauri::WebviewWindowBuilder::new(
-                app,
-                SPLASH_WINDOW_LABEL,
-                tauri::WebviewUrl::App("splash.html".into()),
-            )
-            .title("Storyboard Copilot")
-            .inner_size(420.0, 270.0)
-            .resizable(false)
-            .decorations(false)
-            .center()
-            .always_on_top(true)
-            .visible(true)
-            .build()?;
-
             let app_handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
                 tokio::time::sleep(Duration::from_millis(FRONTEND_READY_TIMEOUT_MS)).await;
 
-                let is_splash_visible = app_handle
-                    .get_webview_window(SPLASH_WINDOW_LABEL)
+                let is_main_visible = app_handle
+                    .get_webview_window(MAIN_WINDOW_LABEL)
                     .and_then(|window| window.is_visible().ok())
                     .unwrap_or(false);
 
-                if is_splash_visible {
+                if !is_main_visible {
                     warn!(
                         "frontend_ready timeout after {}ms, forcing main window reveal",
                         FRONTEND_READY_TIMEOUT_MS
                     );
-                    show_main_and_close_splash(&app_handle);
+                    show_main_window(&app_handle);
                 }
             });
 
