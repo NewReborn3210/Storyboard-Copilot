@@ -43,6 +43,7 @@ import {
   sanitizeStoryboardText,
 } from '@/features/canvas/application/storyboardText';
 import {
+  findReferenceTokens,
   insertReferenceToken,
   removeTextRange,
   resolveReferenceAwareDeleteRange,
@@ -92,8 +93,6 @@ const AUTO_ASPECT_RATIO_OPTION: AspectRatioChoice = {
   value: AUTO_REQUEST_ASPECT_RATIO,
   label: '自动',
 };
-const IMAGE_REFERENCE_MARKER_REGEX = /@图(\d+)/g;
-const IMAGE_REFERENCE_HIGHLIGHT_REGEX = /@图\d+/g;
 const PICKER_FALLBACK_ANCHOR: PickerAnchor = { left: 8, top: 8 };
 
 const STORYBOARD_NODE_HORIZONTAL_PADDING_PX = 24;
@@ -225,38 +224,25 @@ function resolveReferenceIndexFromDescription(
   description: string,
   maxImageCount: number
 ): number | null {
-  IMAGE_REFERENCE_MARKER_REGEX.lastIndex = 0;
-  const match = IMAGE_REFERENCE_MARKER_REGEX.exec(description);
-  if (!match) {
+  const firstReference = findReferenceTokens(description, maxImageCount)[0];
+  if (!firstReference) {
     return null;
   }
 
-  const rawIndex = Number(match[1]);
-  if (!Number.isFinite(rawIndex)) {
-    return null;
-  }
-
-  const zeroBasedIndex = rawIndex - 1;
-  if (zeroBasedIndex < 0 || zeroBasedIndex >= maxImageCount) {
-    return null;
-  }
-
-  return zeroBasedIndex;
+  return firstReference.value - 1;
 }
 
-function renderFrameDescriptionWithHighlights(description: string): ReactNode {
+function renderFrameDescriptionWithHighlights(description: string, maxImageCount: number): ReactNode {
   if (!description) {
     return ' ';
   }
 
   const segments: ReactNode[] = [];
   let lastIndex = 0;
-  IMAGE_REFERENCE_HIGHLIGHT_REGEX.lastIndex = 0;
-  let match = IMAGE_REFERENCE_HIGHLIGHT_REGEX.exec(description);
-
-  while (match) {
-    const matchStart = match.index;
-    const matchText = match[0];
+  const referenceTokens = findReferenceTokens(description, maxImageCount);
+  for (const token of referenceTokens) {
+    const matchStart = token.start;
+    const matchText = token.token;
 
     if (matchStart > lastIndex) {
       segments.push(
@@ -274,7 +260,6 @@ function renderFrameDescriptionWithHighlights(description: string): ReactNode {
     );
 
     lastIndex = matchStart + matchText.length;
-    match = IMAGE_REFERENCE_HIGHLIGHT_REGEX.exec(description);
   }
 
   if (lastIndex < description.length) {
@@ -1256,7 +1241,8 @@ export const StoryboardGenNode = memo(({ id, data, selected, width, height }: St
           currentDescription,
           selectionStart,
           selectionEnd,
-          deleteDirection
+          deleteDirection,
+          incomingImages.length
         );
         if (deleteRange) {
           event.preventDefault();
@@ -1427,7 +1413,7 @@ export const StoryboardGenNode = memo(({ id, data, selected, width, height }: St
                 style={{ scrollbarGutter: 'stable' }}
               >
                 <div className="min-h-full whitespace-pre-wrap break-words px-1.5 py-1 text-left">
-                  {renderFrameDescriptionWithHighlights(frameDescription)}
+                  {renderFrameDescriptionWithHighlights(frameDescription, incomingImages.length)}
                 </div>
               </div>
               <textarea

@@ -5,25 +5,101 @@ export interface TextRange {
   end: number;
 }
 
+export interface ReferenceTokenMatch extends TextRange {
+  token: string;
+  value: number;
+}
+
 interface TokenRange extends TextRange {
   blockStart: number;
   blockEnd: number;
 }
 
-const IMAGE_REFERENCE_TOKEN_REGEX = /@图\d+/g;
-
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
-function findTokenRanges(text: string): TokenRange[] {
+function resolveMaxReferenceNumber(maxImageCount?: number): number {
+  if (typeof maxImageCount !== 'number' || !Number.isFinite(maxImageCount)) {
+    return Number.POSITIVE_INFINITY;
+  }
+
+  return Math.max(0, Math.floor(maxImageCount));
+}
+
+function isAsciiDigit(char: string): boolean {
+  return char >= '0' && char <= '9';
+}
+
+export function findReferenceTokens(text: string, maxImageCount?: number): ReferenceTokenMatch[] {
+  const tokens: ReferenceTokenMatch[] = [];
+  const maxReferenceNumber = resolveMaxReferenceNumber(maxImageCount);
+
+  for (let index = 0; index < text.length; index += 1) {
+    if (text[index] !== '@' || text[index + 1] !== '图') {
+      continue;
+    }
+
+    const digitsStart = index + 2;
+    if (!isAsciiDigit(text[digitsStart] ?? '')) {
+      continue;
+    }
+
+    let digitsEnd = digitsStart;
+    while (isAsciiDigit(text[digitsEnd] ?? '')) {
+      digitsEnd += 1;
+    }
+
+    if (maxReferenceNumber === Number.POSITIVE_INFINITY) {
+      const fullValue = Number(text.slice(digitsStart, digitsEnd));
+      if (Number.isFinite(fullValue) && fullValue >= 1) {
+        tokens.push({
+          start: index,
+          end: digitsEnd,
+          token: text.slice(index, digitsEnd),
+          value: fullValue,
+        });
+        index = digitsEnd - 1;
+      }
+      continue;
+    }
+
+    let bestEnd = -1;
+    let bestValue = 0;
+    let rollingValue = 0;
+    for (let cursor = digitsStart; cursor < digitsEnd; cursor += 1) {
+      rollingValue = rollingValue * 10 + Number(text[cursor]);
+
+      if (rollingValue >= 1 && rollingValue <= maxReferenceNumber) {
+        bestEnd = cursor + 1;
+        bestValue = rollingValue;
+      }
+
+      if (rollingValue > maxReferenceNumber) {
+        break;
+      }
+    }
+
+    if (bestEnd > 0) {
+      tokens.push({
+        start: index,
+        end: bestEnd,
+        token: text.slice(index, bestEnd),
+        value: bestValue,
+      });
+      index = bestEnd - 1;
+    }
+  }
+
+  return tokens;
+}
+
+function findTokenRanges(text: string, maxImageCount?: number): TokenRange[] {
   const ranges: TokenRange[] = [];
-  IMAGE_REFERENCE_TOKEN_REGEX.lastIndex = 0;
-  let match = IMAGE_REFERENCE_TOKEN_REGEX.exec(text);
-  while (match) {
-    const token = match[0];
-    const start = match.index;
-    const end = start + token.length;
+  const referenceTokens = findReferenceTokens(text, maxImageCount);
+  for (const token of referenceTokens) {
+    const start = token.start;
+    const end = token.end;
     const blockStart = start > 0 && text[start - 1] === ' ' ? start - 1 : start;
     const blockEnd = end < text.length && text[end] === ' ' ? end + 1 : end;
 
@@ -33,8 +109,6 @@ function findTokenRanges(text: string): TokenRange[] {
       blockStart,
       blockEnd,
     });
-
-    match = IMAGE_REFERENCE_TOKEN_REGEX.exec(text);
   }
 
   return ranges;
@@ -51,7 +125,7 @@ export function insertReferenceToken(
   const previousChar = before.length > 0 ? before.charAt(before.length - 1) : '';
   const nextChar = after.length > 0 ? after.charAt(0) : '';
   const needsLeadingSpace = before.length > 0 && !/\s/.test(previousChar);
-  const needsTrailingSpace = after.length > 0 && !/\s/.test(nextChar);
+  const needsTrailingSpace = !(after.length > 0 && /\s/.test(nextChar));
   const insertion = `${needsLeadingSpace ? ' ' : ''}${marker}${needsTrailingSpace ? ' ' : ''}`;
 
   return {
@@ -64,13 +138,14 @@ export function resolveReferenceAwareDeleteRange(
   text: string,
   selectionStart: number,
   selectionEnd: number,
-  direction: DeleteDirection
+  direction: DeleteDirection,
+  maxImageCount?: number
 ): TextRange | null {
   const safeStart = clamp(selectionStart, 0, text.length);
   const safeEnd = clamp(selectionEnd, 0, text.length);
   const selectionMin = Math.min(safeStart, safeEnd);
   const selectionMax = Math.max(safeStart, safeEnd);
-  const tokenRanges = findTokenRanges(text);
+  const tokenRanges = findTokenRanges(text, maxImageCount);
 
   if (selectionMin !== selectionMax) {
     let expandedStart = selectionMin;

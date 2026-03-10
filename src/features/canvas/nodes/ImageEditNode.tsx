@@ -35,6 +35,7 @@ import {
   resolveImageDisplayUrl,
 } from '@/features/canvas/application/imageData';
 import {
+  findReferenceTokens,
   insertReferenceToken,
   removeTextRange,
   resolveReferenceAwareDeleteRange,
@@ -76,7 +77,6 @@ interface PickerAnchor {
   top: number;
 }
 
-const IMAGE_REFERENCE_MARKER_REGEX = /@图\d+/g;
 const PICKER_FALLBACK_ANCHOR: PickerAnchor = { left: 8, top: 8 };
 const PICKER_Y_OFFSET_PX = 20;
 const IMAGE_EDIT_NODE_MIN_WIDTH = 420;
@@ -149,18 +149,17 @@ function resolvePickerAnchor(
   };
 }
 
-function renderPromptWithHighlights(prompt: string): ReactNode {
+function renderPromptWithHighlights(prompt: string, maxImageCount: number): ReactNode {
   if (!prompt) {
     return ' ';
   }
 
   const segments: ReactNode[] = [];
   let lastIndex = 0;
-  IMAGE_REFERENCE_MARKER_REGEX.lastIndex = 0;
-  let match = IMAGE_REFERENCE_MARKER_REGEX.exec(prompt);
-  while (match) {
-    const matchStart = match.index;
-    const matchText = match[0];
+  const referenceTokens = findReferenceTokens(prompt, maxImageCount);
+  for (const token of referenceTokens) {
+    const matchStart = token.start;
+    const matchText = token.token;
 
     if (matchStart > lastIndex) {
       segments.push(
@@ -178,7 +177,6 @@ function renderPromptWithHighlights(prompt: string): ReactNode {
     );
 
     lastIndex = matchStart + matchText.length;
-    match = IMAGE_REFERENCE_MARKER_REGEX.exec(prompt);
   }
 
   if (lastIndex < prompt.length) {
@@ -529,7 +527,8 @@ export const ImageEditNode = memo(({ id, data, selected, width, height }: ImageE
         currentPrompt,
         selectionStart,
         selectionEnd,
-        deletionDirection
+        deletionDirection,
+        incomingImages.length
       );
       if (deleteRange) {
         event.preventDefault();
@@ -620,7 +619,7 @@ export const ImageEditNode = memo(({ id, data, selected, width, height }: ImageE
             style={{ scrollbarGutter: 'stable' }}
           >
             <div className="min-h-full whitespace-pre-wrap break-words px-1 py-0.5">
-              {renderPromptWithHighlights(promptDraft)}
+              {renderPromptWithHighlights(promptDraft, incomingImages.length)}
             </div>
           </div>
 
