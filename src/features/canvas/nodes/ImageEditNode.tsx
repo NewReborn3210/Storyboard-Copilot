@@ -91,7 +91,6 @@ const IMAGE_EDIT_NODE_MAX_WIDTH = 1400;
 const IMAGE_EDIT_NODE_MAX_HEIGHT = 1000;
 const IMAGE_EDIT_NODE_DEFAULT_WIDTH = 520;
 const IMAGE_EDIT_NODE_DEFAULT_HEIGHT = 320;
-const AI_RESULT_TITLE_MAX_CHARS = 10;
 
 function getTextareaCaretOffset(
   textarea: HTMLTextAreaElement,
@@ -218,11 +217,7 @@ function buildAiResultNodeTitle(prompt: string, fallbackTitle: string): string {
     return fallbackTitle;
   }
 
-  if (normalizedPrompt.length <= AI_RESULT_TITLE_MAX_CHARS) {
-    return normalizedPrompt;
-  }
-
-  return `${normalizedPrompt.slice(0, AI_RESULT_TITLE_MAX_CHARS)}...`;
+  return normalizedPrompt;
 }
 
 export const ImageEditNode = memo(({ id, data, selected, width, height }: ImageEditNodeProps) => {

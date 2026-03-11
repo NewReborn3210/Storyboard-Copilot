@@ -39,7 +39,12 @@ type NodeHeaderProps = {
 export const NODE_HEADER_TONE_CLASS = 'text-[rgba(15,23,42,0.68)] dark:text-white/55';
 export const NODE_HEADER_TITLE_CLASS = 'text-[14px] font-normal';
 export const NODE_HEADER_META_CLASS = 'text-xs text-text-muted';
-export const NODE_HEADER_FLOATING_POSITION_CLASS = 'absolute -top-7 left-1 z-10';
+export const NODE_HEADER_FLOATING_POSITION_CLASS = 'absolute -top-7 left-1 right-1 z-10';
+const NODE_HEADER_TITLE_MAX_WIDTH_CLASS = 'max-w-[60%]';
+const NODE_HEADER_TITLE_FADE_STYLE: CSSProperties = {
+  WebkitMaskImage: 'linear-gradient(to right, #000 0%, #000 82%, transparent 100%)',
+  maskImage: 'linear-gradient(to right, #000 0%, #000 82%, transparent 100%)',
+};
 
 function composeTransformStyle(adjust?: HeaderAdjust): CSSProperties | undefined {
   if (!adjust) {
@@ -136,7 +141,17 @@ export function NodeHeader({
     if (!canEditTitle) {
       if (titleText) {
         return (
-          <span className={joinClasses('cursor-grab select-none active:cursor-grabbing', NODE_HEADER_TITLE_CLASS, tone, titleClassName)}>
+          <span
+            title={titleText}
+            className={joinClasses(
+              'block min-w-0 overflow-hidden whitespace-nowrap cursor-grab select-none active:cursor-grabbing',
+              NODE_HEADER_TITLE_MAX_WIDTH_CLASS,
+              NODE_HEADER_TITLE_CLASS,
+              tone,
+              titleClassName
+            )}
+            style={NODE_HEADER_TITLE_FADE_STYLE}
+          >
             {titleText}
           </span>
         );
@@ -166,7 +181,7 @@ export function NodeHeader({
             }
           }}
           className={joinClasses(
-            'nodrag nowheel h-6 min-w-[70px] rounded border border-[rgba(15,23,42,0.22)] bg-[rgba(255,255,255,0.86)] px-2 text-[13px] font-normal text-text-dark outline-none focus:border-accent/70 dark:border-[rgba(255,255,255,0.24)] dark:bg-black/30',
+            'nodrag nowheel h-6 min-w-[70px] w-full max-w-full rounded border border-[rgba(15,23,42,0.22)] bg-[rgba(255,255,255,0.86)] px-2 text-[13px] font-normal text-text-dark outline-none focus:border-accent/70 dark:border-[rgba(255,255,255,0.24)] dark:bg-black/30',
             titleClassName
           )}
         />
@@ -177,11 +192,13 @@ export function NodeHeader({
       <button
         type="button"
         className={joinClasses(
-          'inline-flex cursor-grab select-none items-center rounded px-0 text-left active:cursor-grabbing',
+          'block min-w-0 overflow-hidden whitespace-nowrap cursor-grab select-none rounded px-0 text-left active:cursor-grabbing',
+          NODE_HEADER_TITLE_MAX_WIDTH_CLASS,
           NODE_HEADER_TITLE_CLASS,
           tone,
           titleClassName
         )}
+        style={NODE_HEADER_TITLE_FADE_STYLE}
         title={titleText}
         onClick={(event) => event.stopPropagation()}
         onDoubleClick={(event) => {
@@ -209,9 +226,9 @@ export function NodeHeader({
     : meta;
 
   return (
-    <div className={joinClasses('flex items-start justify-between gap-2', className)}>
-      <div className="min-w-0" style={composeTransformStyle(headerAdjust)}>
-        <div className={joinClasses('flex items-center gap-1', titleRowClassName)}>
+    <div className={joinClasses('flex w-full max-w-full items-start justify-between gap-2', className)}>
+      <div className="min-w-0 flex-1" style={composeTransformStyle(headerAdjust)}>
+        <div className={joinClasses('flex w-full items-center gap-1', titleRowClassName)}>
           {icon ? (
             <span
               className={joinClasses('inline-flex items-center justify-center', tone, iconClassName)}
@@ -220,7 +237,7 @@ export function NodeHeader({
               {icon}
             </span>
           ) : null}
-          <div className="flex items-baseline gap-2" style={composeTransformStyle(titleAdjust)}>
+          <div className="flex w-0 min-w-0 flex-1 items-baseline gap-2" style={composeTransformStyle(titleAdjust)}>
             {resolvedTitle}
             {resolvedMeta}
           </div>
