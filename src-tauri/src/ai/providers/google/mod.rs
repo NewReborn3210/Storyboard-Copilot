@@ -144,7 +144,9 @@ impl GoogleProvider {
             other => other,
         });
         let size = Self::aspect_ratio_to_size(&request.aspect_ratio);
-        let endpoint = format!("{}/v1/images/generations", base_url.trim_end_matches('/'));
+        let base = base_url.trim_end_matches('/');
+        let base = base.strip_suffix("/v1").unwrap_or(base);
+        let endpoint = format!("{}/v1/images/generations", base);
 
         let body = serde_json::json!({
             "model": model_id,
