@@ -184,15 +184,21 @@ export const ModelParamsControls = memo(({
   const [panelProviderId, setPanelProviderId] = useState(selectedModel.providerId);
   const [missingKeyProviderName, setMissingKeyProviderName] = useState<string | null>(null);
   const apiKeys = useSettingsStore((state) => state.apiKeys);
+  const providerApiProtocols = useSettingsStore((state) => state.providerApiProtocols);
+  const providerCustomModelIds = useSettingsStore((state) => state.providerCustomModelIds);
 
   const selectedProvider = useMemo(
     () => getModelProvider(selectedModel.providerId),
     [selectedModel.providerId]
   );
-  const selectedModelName = useMemo(
-    () => selectedModel.displayName.replace(/\s*\([^)]*\)\s*$/u, '').trim() || selectedModel.displayName,
-    [selectedModel.displayName]
-  );
+  const selectedModelName = useMemo(() => {
+    const customModelId = providerCustomModelIds[selectedModel.providerId];
+    const isOpenAICompat = (providerApiProtocols[selectedModel.providerId] ?? 'official') === 'openai-compatible';
+    if (isOpenAICompat && customModelId && customModelId.trim().length > 0) {
+      return customModelId.trim();
+    }
+    return selectedModel.displayName.replace(/\s*\([^)]*\)\s*$/u, '').trim() || selectedModel.displayName;
+  }, [selectedModel.providerId, selectedModel.displayName, providerApiProtocols, providerCustomModelIds]);
   const selectedProviderName = selectedProvider.label || selectedProvider.name;
   const providerOptions = useMemo(() => {
     const providerOrder = ['kie', 'ppio', 'fal', 'grsai'];

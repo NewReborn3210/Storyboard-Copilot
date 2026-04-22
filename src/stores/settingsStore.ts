@@ -12,12 +12,16 @@ export type ThemeTonePreset = 'neutral' | 'warm' | 'cool';
 export type CanvasEdgeRoutingMode = 'spline' | 'orthogonal' | 'smartOrthogonal';
 export type ProviderApiKeys = Record<string, string>;
 export type ProviderBaseUrls = Record<string, string>;
+export type ProviderApiProtocols = Record<string, string>;
+export type ProviderCustomModelIds = Record<string, string>;
 export const DEFAULT_GRSAI_NANO_BANANA_PRO_MODEL = 'nano-banana-pro';
 
 interface SettingsState {
   isHydrated: boolean;
   apiKeys: ProviderApiKeys;
   providerBaseUrls: ProviderBaseUrls;
+  providerApiProtocols: ProviderApiProtocols;
+  providerCustomModelIds: ProviderCustomModelIds;
   grsaiNanoBananaProModel: string;
   hideProviderGuidePopover: boolean;
   downloadPresetPaths: string[];
@@ -41,6 +45,8 @@ interface SettingsState {
   enableUpdateDialog: boolean;
   setProviderApiKey: (providerId: string, key: string) => void;
   setProviderBaseUrl: (providerId: string, url: string) => void;
+  setProviderApiProtocol: (providerId: string, protocol: string) => void;
+  setProviderCustomModelId: (providerId: string, modelId: string) => void;
   setGrsaiNanoBananaProModel: (model: string) => void;
   setHideProviderGuidePopover: (hide: boolean) => void;
   setDownloadPresetPaths: (paths: string[]) => void;
@@ -167,6 +173,8 @@ export const useSettingsStore = create<SettingsState>()(
       isHydrated: false,
       apiKeys: {},
       providerBaseUrls: {},
+      providerApiProtocols: {},
+      providerCustomModelIds: {},
       grsaiNanoBananaProModel: DEFAULT_GRSAI_NANO_BANANA_PRO_MODEL,
       hideProviderGuidePopover: false,
       downloadPresetPaths: [],
@@ -200,6 +208,20 @@ export const useSettingsStore = create<SettingsState>()(
           providerBaseUrls: {
             ...state.providerBaseUrls,
             [providerId]: url.trim(),
+          },
+        })),
+      setProviderApiProtocol: (providerId, protocol) =>
+        set((state) => ({
+          providerApiProtocols: {
+            ...state.providerApiProtocols,
+            [providerId]: protocol.trim(),
+          },
+        })),
+      setProviderCustomModelId: (providerId, modelId) =>
+        set((state) => ({
+          providerCustomModelIds: {
+            ...state.providerCustomModelIds,
+            [providerId]: modelId.trim(),
           },
         })),
       setGrsaiNanoBananaProModel: (model) =>

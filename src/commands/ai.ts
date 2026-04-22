@@ -129,6 +129,22 @@ export async function setProviderBaseUrl(provider: string, baseUrl: string): Pro
   return await invoke('set_provider_base_url', { provider, baseUrl });
 }
 
+export async function setProviderApiProtocol(provider: string, protocol: string): Promise<void> {
+  console.info('[AI] set_provider_api_protocol', { provider, protocol, tauri: isTauri() });
+  if (!isTauri()) {
+    throw new Error('当前不是 Tauri 容器环境，请使用 `npm run tauri dev` 启动');
+  }
+  return await invoke('set_provider_api_protocol', { provider, protocol });
+}
+
+export async function setProviderCustomModelId(provider: string, modelId: string): Promise<void> {
+  console.info('[AI] set_provider_custom_model_id', { provider, modelId: modelId || '(cleared)', tauri: isTauri() });
+  if (!isTauri()) {
+    throw new Error('当前不是 Tauri 容器环境，请使用 `npm run tauri dev` 启动');
+  }
+  return await invoke('set_provider_custom_model_id', { provider, modelId });
+}
+
 export async function generateImage(request: GenerateRequest): Promise<string> {
   const startedAt = performance.now();
   console.info('[AI] generate_image request', {

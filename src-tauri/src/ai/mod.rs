@@ -56,6 +56,14 @@ pub trait AIProvider: Send + Sync {
         Ok(())
     }
 
+    async fn set_api_protocol(&self, _protocol: String) -> Result<(), AIError> {
+        Ok(())
+    }
+
+    async fn set_custom_model_id(&self, _model_id: String) -> Result<(), AIError> {
+        Ok(())
+    }
+
     fn supports_task_resume(&self) -> bool {
         false
     }

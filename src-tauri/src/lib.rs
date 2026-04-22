@@ -178,6 +178,8 @@ pub fn run() {
             image::copy_image_source_to_clipboard,
             ai_commands::set_api_key,
             ai_commands::set_provider_base_url,
+            ai_commands::set_provider_api_protocol,
+            ai_commands::set_provider_custom_model_id,
             ai_commands::submit_generate_image_job,
             ai_commands::get_generate_image_job,
             ai_commands::generate_image,

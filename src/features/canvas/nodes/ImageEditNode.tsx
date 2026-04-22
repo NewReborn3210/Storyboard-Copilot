@@ -70,7 +70,7 @@ import { NodePriceBadge } from '@/features/canvas/ui/NodePriceBadge';
 import { UiButton } from '@/components/ui';
 import { useCanvasStore } from '@/stores/canvasStore';
 import { useSettingsStore } from '@/stores/settingsStore';
-import { setProviderBaseUrl } from '@/commands/ai';
+import { setProviderBaseUrl, setProviderApiProtocol, setProviderCustomModelId } from '@/commands/ai';
 
 type ImageEditNodeProps = NodeProps & {
   id: string;
@@ -249,6 +249,8 @@ export const ImageEditNode = memo(({ id, data, selected, width, height }: ImageE
   const addEdge = useCanvasStore((state) => state.addEdge);
   const apiKeys = useSettingsStore((state) => state.apiKeys);
   const providerBaseUrls = useSettingsStore((state) => state.providerBaseUrls);
+  const providerApiProtocols = useSettingsStore((state) => state.providerApiProtocols);
+  const providerCustomModelIds = useSettingsStore((state) => state.providerCustomModelIds);
   const grsaiNanoBananaProModel = useSettingsStore((state) => state.grsaiNanoBananaProModel);
   const showNodePrice = useSettingsStore((state) => state.showNodePrice);
   const priceDisplayCurrencyMode = useSettingsStore((state) => state.priceDisplayCurrencyMode);
@@ -503,6 +505,14 @@ export const ImageEditNode = memo(({ id, data, selected, width, height }: ImageE
       const providerBaseUrl = providerBaseUrls[selectedModel.providerId];
       if (providerBaseUrl !== undefined) {
         await setProviderBaseUrl(selectedModel.providerId, providerBaseUrl);
+      }
+      const providerApiProtocol = providerApiProtocols[selectedModel.providerId];
+      if (providerApiProtocol !== undefined) {
+        await setProviderApiProtocol(selectedModel.providerId, providerApiProtocol);
+      }
+      const providerCustomModelId = providerCustomModelIds[selectedModel.providerId];
+      if (providerCustomModelId !== undefined) {
+        await setProviderCustomModelId(selectedModel.providerId, providerCustomModelId);
       }
 
       let resolvedRequestAspectRatio = selectedAspectRatio.value;

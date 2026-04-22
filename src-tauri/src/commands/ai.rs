@@ -287,6 +287,36 @@ pub async fn set_provider_base_url(provider: String, base_url: String) -> Result
 }
 
 #[tauri::command]
+pub async fn set_provider_api_protocol(provider: String, protocol: String) -> Result<(), String> {
+    info!("Setting API protocol for provider: {} -> {}", provider, protocol);
+
+    let registry = get_registry();
+    let resolved_provider = registry
+        .get_provider(provider.as_str())
+        .ok_or_else(|| format!("Unknown provider: {}", provider))?;
+
+    resolved_provider
+        .set_api_protocol(protocol)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub async fn set_provider_custom_model_id(provider: String, model_id: String) -> Result<(), String> {
+    info!("Setting custom model id for provider: {} -> {}", provider, model_id);
+
+    let registry = get_registry();
+    let resolved_provider = registry
+        .get_provider(provider.as_str())
+        .ok_or_else(|| format!("Unknown provider: {}", provider))?;
+
+    resolved_provider
+        .set_custom_model_id(model_id)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
 pub async fn submit_generate_image_job(
     app: AppHandle,
     request: GenerateRequestDto,

@@ -26,7 +26,7 @@ import {
 import { EXPORT_RESULT_DISPLAY_NAME, resolveNodeDisplayName } from '@/features/canvas/domain/nodeDisplay';
 import { useCanvasStore } from '@/stores/canvasStore';
 import { useSettingsStore } from '@/stores/settingsStore';
-import { setProviderBaseUrl } from '@/commands/ai';
+import { setProviderBaseUrl, setProviderApiProtocol, setProviderCustomModelId } from '@/commands/ai';
 import {
   canvasAiGateway,
   graphImageResolver,
@@ -552,6 +552,8 @@ export const StoryboardGenNode = memo(({ id, data, selected, width, height }: St
   const findNodePosition = useCanvasStore((state) => state.findNodePosition);
   const apiKeys = useSettingsStore((state) => state.apiKeys);
   const providerBaseUrls = useSettingsStore((state) => state.providerBaseUrls);
+  const providerApiProtocols = useSettingsStore((state) => state.providerApiProtocols);
+  const providerCustomModelIds = useSettingsStore((state) => state.providerCustomModelIds);
   const grsaiNanoBananaProModel = useSettingsStore((state) => state.grsaiNanoBananaProModel);
   const storyboardGenKeepStyleConsistent = useSettingsStore(
     (state) => state.storyboardGenKeepStyleConsistent
@@ -1105,6 +1107,14 @@ export const StoryboardGenNode = memo(({ id, data, selected, width, height }: St
       const providerBaseUrl = providerBaseUrls[selectedModel.providerId];
       if (providerBaseUrl !== undefined) {
         await setProviderBaseUrl(selectedModel.providerId, providerBaseUrl);
+      }
+      const providerApiProtocol = providerApiProtocols[selectedModel.providerId];
+      if (providerApiProtocol !== undefined) {
+        await setProviderApiProtocol(selectedModel.providerId, providerApiProtocol);
+      }
+      const providerCustomModelId = providerCustomModelIds[selectedModel.providerId];
+      if (providerCustomModelId !== undefined) {
+        await setProviderCustomModelId(selectedModel.providerId, providerCustomModelId);
       }
 
       // 生成网格图片作为最后一张参考图片

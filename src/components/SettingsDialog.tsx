@@ -92,6 +92,8 @@ export function SettingsDialog({
   const {
     apiKeys,
     providerBaseUrls,
+    providerApiProtocols,
+    providerCustomModelIds,
     grsaiNanoBananaProModel,
     hideProviderGuidePopover,
     downloadPresetPaths,
@@ -115,6 +117,8 @@ export function SettingsDialog({
     enableUpdateDialog,
     setProviderApiKey,
     setProviderBaseUrl,
+    setProviderApiProtocol,
+    setProviderCustomModelId,
     setGrsaiNanoBananaProModel,
     setDownloadPresetPaths,
     setUseUploadFilenameAsNodeTitle,
@@ -149,6 +153,8 @@ export function SettingsDialog({
   const [appVersion, setAppVersion] = useState<string>('');
   const [localApiKeys, setLocalApiKeys] = useState<Record<string, string>>(apiKeys);
   const [localBaseUrls, setLocalBaseUrls] = useState<Record<string, string>>(providerBaseUrls);
+  const [localApiProtocols, setLocalApiProtocols] = useState<Record<string, string>>(providerApiProtocols);
+  const [localCustomModelIds, setLocalCustomModelIds] = useState<Record<string, string>>(providerCustomModelIds);
   const [localGrsaiNanoBananaProModel, setLocalGrsaiNanoBananaProModel] = useState(
     grsaiNanoBananaProModel
   );
@@ -218,6 +224,8 @@ export function SettingsDialog({
     }
     setLocalApiKeys(apiKeys);
     setLocalBaseUrls(providerBaseUrls);
+    setLocalApiProtocols(providerApiProtocols);
+    setLocalCustomModelIds(providerCustomModelIds);
     setLocalDownloadPresetPaths(downloadPresetPaths);
     setLocalGrsaiNanoBananaProModel(grsaiNanoBananaProModel);
     setLocalUseUploadFilenameAsNodeTitle(useUploadFilenameAsNodeTitle);
@@ -259,6 +267,12 @@ export function SettingsDialog({
       if (localBaseUrls[provider.id] !== undefined) {
         setProviderBaseUrl(provider.id, localBaseUrls[provider.id] ?? '');
       }
+      if (localApiProtocols[provider.id] !== undefined) {
+        setProviderApiProtocol(provider.id, localApiProtocols[provider.id] ?? '');
+      }
+      if (localCustomModelIds[provider.id] !== undefined) {
+        setProviderCustomModelId(provider.id, localCustomModelIds[provider.id] ?? '');
+      }
     });
     setGrsaiNanoBananaProModel(localGrsaiNanoBananaProModel);
     setDownloadPresetPaths(localDownloadPresetPaths);
@@ -284,6 +298,8 @@ export function SettingsDialog({
   }, [
     localApiKeys,
     localBaseUrls,
+    localApiProtocols,
+    localCustomModelIds,
     localDownloadPresetPaths,
     localGrsaiNanoBananaProModel,
     localUseUploadFilenameAsNodeTitle,
@@ -307,6 +323,8 @@ export function SettingsDialog({
     providers,
     setProviderApiKey,
     setProviderBaseUrl,
+    setProviderApiProtocol,
+    setProviderCustomModelId,
     setGrsaiNanoBananaProModel,
     setDownloadPresetPaths,
     setUseUploadFilenameAsNodeTitle,
@@ -582,26 +600,74 @@ export function SettingsDialog({
                         </div>
 
                         {provider.id === 'google' && (
-                          <div className="mt-3">
-                            <div className="mb-1 text-xs font-medium text-text-dark">
-                              {t('settings.providerBaseUrl')}
+                          <div className="mt-3 space-y-3">
+                            <div>
+                              <div className="mb-1 text-xs font-medium text-text-dark">
+                                {t('settings.providerApiProtocol')}
+                              </div>
+                              <select
+                                value={localApiProtocols['google'] ?? 'official'}
+                                onChange={(event) => {
+                                  const nextValue = event.target.value;
+                                  setLocalApiProtocols((previous) => ({
+                                    ...previous,
+                                    google: nextValue,
+                                  }));
+                                }}
+                                className="w-full rounded border border-border-dark bg-surface-dark px-3 py-2 text-sm text-text-dark"
+                              >
+                                <option value="official">{t('settings.apiProtocolOfficial')}</option>
+                                <option value="openai-compatible">{t('settings.apiProtocolOpenAICompat')}</option>
+                              </select>
                             </div>
-                            <p className="mb-2 text-xs text-text-muted">
-                              {t('settings.providerBaseUrlHint')}
-                            </p>
-                            <input
-                              type="text"
-                              value={localBaseUrls['google'] ?? ''}
-                              onChange={(event) => {
-                                const nextValue = event.target.value;
-                                setLocalBaseUrls((previous) => ({
-                                  ...previous,
-                                  google: nextValue,
-                                }));
-                              }}
-                              placeholder={t('settings.providerBaseUrlPlaceholder')}
-                              className="w-full rounded border border-border-dark bg-surface-dark px-3 py-2 text-sm text-text-dark placeholder:text-text-muted"
-                            />
+
+                            {(localApiProtocols['google'] ?? 'official') === 'openai-compatible' && (
+                              <div>
+                                <div className="mb-1 text-xs font-medium text-text-dark">
+                                  {t('settings.providerBaseUrl')}
+                                </div>
+                                <p className="mb-2 text-xs text-text-muted">
+                                  {t('settings.providerBaseUrlHint')}
+                                </p>
+                                <input
+                                  type="text"
+                                  value={localBaseUrls['google'] ?? ''}
+                                  onChange={(event) => {
+                                    const nextValue = event.target.value;
+                                    setLocalBaseUrls((previous) => ({
+                                      ...previous,
+                                      google: nextValue,
+                                    }));
+                                  }}
+                                  placeholder={t('settings.providerBaseUrlPlaceholder')}
+                                  className="w-full rounded border border-border-dark bg-surface-dark px-3 py-2 text-sm text-text-dark placeholder:text-text-muted"
+                                />
+                              </div>
+                            )}
+
+                            {(localApiProtocols['google'] ?? 'official') === 'openai-compatible' && (
+                              <div>
+                                <div className="mb-1 text-xs font-medium text-text-dark">
+                                  {t('settings.providerCustomModelId')}
+                                </div>
+                                <p className="mb-2 text-xs text-text-muted">
+                                  {t('settings.providerCustomModelIdHint')}
+                                </p>
+                                <input
+                                  type="text"
+                                  value={localCustomModelIds['google'] ?? ''}
+                                  onChange={(event) => {
+                                    const nextValue = event.target.value;
+                                    setLocalCustomModelIds((previous) => ({
+                                      ...previous,
+                                      google: nextValue,
+                                    }));
+                                  }}
+                                  placeholder={t('settings.providerCustomModelIdPlaceholder')}
+                                  className="w-full rounded border border-border-dark bg-surface-dark px-3 py-2 text-sm text-text-dark placeholder:text-text-muted"
+                                />
+                              </div>
+                            )}
                           </div>
                         )}
 

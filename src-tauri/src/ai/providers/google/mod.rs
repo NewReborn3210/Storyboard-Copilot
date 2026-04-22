@@ -24,6 +24,8 @@ pub struct GoogleProvider {
     client: Client,
     api_key: Arc<RwLock<Option<String>>>,
     base_url: Arc<RwLock<Option<String>>>,
+    api_protocol: Arc<RwLock<Option<String>>>,
+    custom_model_id: Arc<RwLock<Option<String>>>,
 }
 
 impl GoogleProvider {
@@ -32,6 +34,8 @@ impl GoogleProvider {
             client: Client::new(),
             api_key: Arc::new(RwLock::new(None)),
             base_url: Arc::new(RwLock::new(None)),
+            api_protocol: Arc::new(RwLock::new(None)),
+            custom_model_id: Arc::new(RwLock::new(None)),
         }
     }
 
@@ -130,14 +134,15 @@ impl GoogleProvider {
         request: &GenerateRequest,
         api_key: &str,
         base_url: &str,
+        custom_model_id: Option<&str>,
     ) -> Result<String, AIError> {
         let bare = Self::bare_model(&request.model);
-        // Map our model names to the model id the proxy expects
-        let model_id = match bare {
+        // Use custom model id if set; otherwise map our model names to proxy model ids
+        let model_id = custom_model_id.filter(|s| !s.is_empty()).unwrap_or_else(|| match bare {
             "gemini-2.0-flash" => "gemini-2.0-flash-preview-image-generation",
             "imagen-3" => "imagen-3.0-generate-002",
             other => other,
-        };
+        });
         let size = Self::aspect_ratio_to_size(&request.aspect_ratio);
         let endpoint = format!("{}/v1/images/generations", base_url.trim_end_matches('/'));
 
@@ -372,23 +377,38 @@ impl AIProvider for GoogleProvider {
         Ok(())
     }
 
+    async fn set_api_protocol(&self, protocol: String) -> Result<(), AIError> {
+        let mut proto = self.api_protocol.write().await;
+        let trimmed = protocol.trim().to_string();
+        *proto = if trimmed.is_empty() { None } else { Some(trimmed) };
+        Ok(())
+    }
+
+    async fn set_custom_model_id(&self, model_id: String) -> Result<(), AIError> {
+        let mut mid = self.custom_model_id.write().await;
+        let trimmed = model_id.trim().to_string();
+        *mid = if trimmed.is_empty() { None } else { Some(trimmed) };
+        Ok(())
+    }
+
     async fn generate(&self, request: GenerateRequest) -> Result<String, AIError> {
         let key = self.api_key.read().await;
         let api_key = key
             .as_ref()
             .ok_or_else(|| AIError::InvalidRequest("Google AI API key not set".to_string()))?;
 
+        let api_protocol = self.api_protocol.read().await;
         let base_url = self.base_url.read().await;
+        let custom_model_id = self.custom_model_id.read().await;
 
-        // If key starts with "sk-" or a custom base URL is set, use OpenAI-compatible API
-        let is_sk_key = api_key.starts_with("sk-");
-        if let Some(ref url) = *base_url {
-            return self.generate_with_openai_compat(&request, api_key, url).await;
-        }
-        if is_sk_key {
-            return Err(AIError::InvalidRequest(
-                "使用 sk- 格式的 key 时，请在设置中填写自定义 Base URL（代理服务地址）".to_string(),
-            ));
+        // Explicit protocol: openai-compatible → use proxy; otherwise official API
+        if api_protocol.as_deref() == Some("openai-compatible") {
+            let url = base_url.as_deref().ok_or_else(|| {
+                AIError::InvalidRequest(
+                    "使用 OpenAI 兼容模式时，请在设置中填写 Base URL（代理地址）".to_string(),
+                )
+            })?;
+            return self.generate_with_openai_compat(&request, api_key, url, custom_model_id.as_deref()).await;
         }
 
         match Self::bare_model(&request.model) {
