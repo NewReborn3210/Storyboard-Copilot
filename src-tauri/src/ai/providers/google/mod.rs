@@ -148,12 +148,13 @@ impl GoogleProvider {
         let base = base.strip_suffix("/v1").unwrap_or(base);
         let endpoint = format!("{}/v1/images/generations", base);
 
+        // Do NOT include response_format — some proxies (e.g. OpenRouter) forward it
+        // to the native API which may reject it with 500. Let the proxy default to URL.
         let body = serde_json::json!({
             "model": model_id,
             "prompt": request.prompt,
             "n": 1,
             "size": size,
-            "response_format": "b64_json"
         });
 
         info!(
@@ -181,17 +182,30 @@ impl GoogleProvider {
 
         let resp_body = response.json::<serde_json::Value>().await?;
 
-        let b64 = resp_body
-            .pointer("/data/0/b64_json")
-            .and_then(|v| v.as_str())
-            .ok_or_else(|| {
-                AIError::Provider(format!(
-                    "No image found in OpenAI-compat response: {}",
-                    resp_body
-                ))
-            })?;
+        // Handle both b64_json and url response formats
+        if let Some(b64) = resp_body.pointer("/data/0/b64_json").and_then(|v| v.as_str()) {
+            return Ok(format!("data:image/png;base64,{}", b64));
+        }
 
-        Ok(format!("data:image/png;base64,{}", b64))
+        if let Some(url) = resp_body.pointer("/data/0/url").and_then(|v| v.as_str()) {
+            // Download and convert to base64
+            let img_response = self.client.get(url).send().await?;
+            let content_type = img_response
+                .headers()
+                .get("content-type")
+                .and_then(|v| v.to_str().ok())
+                .unwrap_or("image/png")
+                .to_string();
+            let mime = content_type.split(';').next().unwrap_or("image/png").trim().to_string();
+            let bytes = img_response.bytes().await?;
+            let b64 = STANDARD.encode(&bytes);
+            return Ok(format!("data:{};base64,{}", mime, b64));
+        }
+
+        Err(AIError::Provider(format!(
+            "No image found in OpenAI-compat response: {}",
+            resp_body
+        )))
     }
 
     async fn generate_with_gemini_flash(
