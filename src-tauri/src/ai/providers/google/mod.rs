@@ -249,7 +249,14 @@ impl GoogleProvider {
             )));
         }
 
-        let resp_body = response.json::<Value>().await?;
+        let resp_text = response.text().await?;
+        let resp_body: Value = serde_json::from_str(&resp_text).map_err(|e| {
+            AIError::Provider(format!(
+                "Gemini Flash response is not valid JSON ({}): {}",
+                e,
+                &resp_text[..resp_text.len().min(500)]
+            ))
+        })?;
 
         // Extract first image part from candidates[0].content.parts
         let (mime, data) = resp_body
@@ -317,7 +324,14 @@ impl GoogleProvider {
             )));
         }
 
-        let resp_body = response.json::<Value>().await?;
+        let resp_text = response.text().await?;
+        let resp_body: Value = serde_json::from_str(&resp_text).map_err(|e| {
+            AIError::Provider(format!(
+                "Imagen 3 response is not valid JSON ({}): {}",
+                e,
+                &resp_text[..resp_text.len().min(500)]
+            ))
+        })?;
 
         let b64 = resp_body
             .pointer("/predictions/0/bytesBase64Encoded")
