@@ -11,11 +11,13 @@ export type UiRadiusPreset = 'compact' | 'default' | 'large';
 export type ThemeTonePreset = 'neutral' | 'warm' | 'cool';
 export type CanvasEdgeRoutingMode = 'spline' | 'orthogonal' | 'smartOrthogonal';
 export type ProviderApiKeys = Record<string, string>;
+export type ProviderBaseUrls = Record<string, string>;
 export const DEFAULT_GRSAI_NANO_BANANA_PRO_MODEL = 'nano-banana-pro';
 
 interface SettingsState {
   isHydrated: boolean;
   apiKeys: ProviderApiKeys;
+  providerBaseUrls: ProviderBaseUrls;
   grsaiNanoBananaProModel: string;
   hideProviderGuidePopover: boolean;
   downloadPresetPaths: string[];
@@ -38,6 +40,7 @@ interface SettingsState {
   autoCheckAppUpdateOnLaunch: boolean;
   enableUpdateDialog: boolean;
   setProviderApiKey: (providerId: string, key: string) => void;
+  setProviderBaseUrl: (providerId: string, url: string) => void;
   setGrsaiNanoBananaProModel: (model: string) => void;
   setHideProviderGuidePopover: (hide: boolean) => void;
   setDownloadPresetPaths: (paths: string[]) => void;
@@ -163,6 +166,7 @@ export const useSettingsStore = create<SettingsState>()(
     (set) => ({
       isHydrated: false,
       apiKeys: {},
+      providerBaseUrls: {},
       grsaiNanoBananaProModel: DEFAULT_GRSAI_NANO_BANANA_PRO_MODEL,
       hideProviderGuidePopover: false,
       downloadPresetPaths: [],
@@ -189,6 +193,13 @@ export const useSettingsStore = create<SettingsState>()(
           apiKeys: {
             ...state.apiKeys,
             [providerId]: normalizeApiKey(key),
+          },
+        })),
+      setProviderBaseUrl: (providerId, url) =>
+        set((state) => ({
+          providerBaseUrls: {
+            ...state.providerBaseUrls,
+            [providerId]: url.trim(),
           },
         })),
       setGrsaiNanoBananaProModel: (model) =>

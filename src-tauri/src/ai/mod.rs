@@ -52,6 +52,10 @@ pub trait AIProvider: Send + Sync {
         )))
     }
 
+    async fn set_base_url(&self, _base_url: String) -> Result<(), AIError> {
+        Ok(())
+    }
+
     fn supports_task_resume(&self) -> bool {
         false
     }

@@ -23,6 +23,7 @@ const SUPPORTED_MODELS: &[&str] = &[
 pub struct GoogleProvider {
     client: Client,
     api_key: Arc<RwLock<Option<String>>>,
+    base_url: Arc<RwLock<Option<String>>>,
 }
 
 impl GoogleProvider {
@@ -30,11 +31,22 @@ impl GoogleProvider {
         Self {
             client: Client::new(),
             api_key: Arc::new(RwLock::new(None)),
+            base_url: Arc::new(RwLock::new(None)),
         }
     }
 
     fn bare_model(model: &str) -> &str {
         model.split_once('/').map(|(_, m)| m).unwrap_or(model)
+    }
+
+    fn aspect_ratio_to_size(ratio: &str) -> &'static str {
+        match ratio {
+            "9:16" => "1024x1792",
+            "16:9" => "1792x1024",
+            "3:4" => "768x1024",
+            "4:3" => "1024x768",
+            _ => "1024x1024",
+        }
     }
 
     fn normalize_imagen3_aspect_ratio(ratio: &str) -> String {
@@ -111,6 +123,68 @@ impl GoogleProvider {
         }
 
         None
+    }
+
+    async fn generate_with_openai_compat(
+        &self,
+        request: &GenerateRequest,
+        api_key: &str,
+        base_url: &str,
+    ) -> Result<String, AIError> {
+        let bare = Self::bare_model(&request.model);
+        // Map our model names to the model id the proxy expects
+        let model_id = match bare {
+            "gemini-2.0-flash" => "gemini-2.0-flash-preview-image-generation",
+            "imagen-3" => "imagen-3.0-generate-002",
+            other => other,
+        };
+        let size = Self::aspect_ratio_to_size(&request.aspect_ratio);
+        let endpoint = format!("{}/v1/images/generations", base_url.trim_end_matches('/'));
+
+        let body = serde_json::json!({
+            "model": model_id,
+            "prompt": request.prompt,
+            "n": 1,
+            "size": size,
+            "response_format": "b64_json"
+        });
+
+        info!(
+            "[Google OpenAI-compat] endpoint={}, model={}, size={}",
+            endpoint, model_id, size
+        );
+
+        let response = self
+            .client
+            .post(&endpoint)
+            .header("Authorization", format!("Bearer {}", api_key))
+            .header("Content-Type", "application/json")
+            .json(&body)
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let error_text = response.text().await.unwrap_or_default();
+            return Err(AIError::Provider(format!(
+                "OpenAI-compat API request failed {}: {}",
+                status, error_text
+            )));
+        }
+
+        let resp_body = response.json::<serde_json::Value>().await?;
+
+        let b64 = resp_body
+            .pointer("/data/0/b64_json")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| {
+                AIError::Provider(format!(
+                    "No image found in OpenAI-compat response: {}",
+                    resp_body
+                ))
+            })?;
+
+        Ok(format!("data:image/png;base64,{}", b64))
     }
 
     async fn generate_with_gemini_flash(
@@ -291,11 +365,31 @@ impl AIProvider for GoogleProvider {
         Ok(())
     }
 
+    async fn set_base_url(&self, base_url: String) -> Result<(), AIError> {
+        let mut url = self.base_url.write().await;
+        let trimmed = base_url.trim().to_string();
+        *url = if trimmed.is_empty() { None } else { Some(trimmed) };
+        Ok(())
+    }
+
     async fn generate(&self, request: GenerateRequest) -> Result<String, AIError> {
         let key = self.api_key.read().await;
         let api_key = key
             .as_ref()
             .ok_or_else(|| AIError::InvalidRequest("Google AI API key not set".to_string()))?;
+
+        let base_url = self.base_url.read().await;
+
+        // If key starts with "sk-" or a custom base URL is set, use OpenAI-compatible API
+        let is_sk_key = api_key.starts_with("sk-");
+        if let Some(ref url) = *base_url {
+            return self.generate_with_openai_compat(&request, api_key, url).await;
+        }
+        if is_sk_key {
+            return Err(AIError::InvalidRequest(
+                "使用 sk- 格式的 key 时，请在设置中填写自定义 Base URL（代理服务地址）".to_string(),
+            ));
+        }
 
         match Self::bare_model(&request.model) {
             "gemini-2.0-flash" => self.generate_with_gemini_flash(&request, api_key).await,

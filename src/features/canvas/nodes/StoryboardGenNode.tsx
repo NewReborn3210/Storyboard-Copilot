@@ -26,6 +26,7 @@ import {
 import { EXPORT_RESULT_DISPLAY_NAME, resolveNodeDisplayName } from '@/features/canvas/domain/nodeDisplay';
 import { useCanvasStore } from '@/stores/canvasStore';
 import { useSettingsStore } from '@/stores/settingsStore';
+import { setProviderBaseUrl } from '@/commands/ai';
 import {
   canvasAiGateway,
   graphImageResolver,
@@ -550,6 +551,7 @@ export const StoryboardGenNode = memo(({ id, data, selected, width, height }: St
   const addEdge = useCanvasStore((state) => state.addEdge);
   const findNodePosition = useCanvasStore((state) => state.findNodePosition);
   const apiKeys = useSettingsStore((state) => state.apiKeys);
+  const providerBaseUrls = useSettingsStore((state) => state.providerBaseUrls);
   const grsaiNanoBananaProModel = useSettingsStore((state) => state.grsaiNanoBananaProModel);
   const storyboardGenKeepStyleConsistent = useSettingsStore(
     (state) => state.storyboardGenKeepStyleConsistent
@@ -1100,6 +1102,10 @@ export const StoryboardGenNode = memo(({ id, data, selected, width, height }: St
 
     try {
       await canvasAiGateway.setApiKey(selectedModel.providerId, providerApiKey);
+      const providerBaseUrl = providerBaseUrls[selectedModel.providerId];
+      if (providerBaseUrl !== undefined) {
+        await setProviderBaseUrl(selectedModel.providerId, providerBaseUrl);
+      }
 
       // 生成网格图片作为最后一张参考图片
       const gridImageDataUrl = generateGridImageDataUrl(

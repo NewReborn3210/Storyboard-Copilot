@@ -272,6 +272,21 @@ pub async fn set_api_key(provider: String, api_key: String) -> Result<(), String
 }
 
 #[tauri::command]
+pub async fn set_provider_base_url(provider: String, base_url: String) -> Result<(), String> {
+    info!("Setting base URL for provider: {}", provider);
+
+    let registry = get_registry();
+    let resolved_provider = registry
+        .get_provider(provider.as_str())
+        .ok_or_else(|| format!("Unknown provider: {}", provider))?;
+
+    resolved_provider
+        .set_base_url(base_url)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
 pub async fn submit_generate_image_job(
     app: AppHandle,
     request: GenerateRequestDto,

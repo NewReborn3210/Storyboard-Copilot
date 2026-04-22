@@ -121,6 +121,14 @@ export async function setApiKey(provider: string, apiKey: string): Promise<void>
   return await invoke('set_api_key', { provider, apiKey });
 }
 
+export async function setProviderBaseUrl(provider: string, baseUrl: string): Promise<void> {
+  console.info('[AI] set_provider_base_url', { provider, baseUrl: baseUrl ? baseUrl : '(cleared)', tauri: isTauri() });
+  if (!isTauri()) {
+    throw new Error('当前不是 Tauri 容器环境，请使用 `npm run tauri dev` 启动');
+  }
+  return await invoke('set_provider_base_url', { provider, baseUrl });
+}
+
 export async function generateImage(request: GenerateRequest): Promise<string> {
   const startedAt = performance.now();
   console.info('[AI] generate_image request', {

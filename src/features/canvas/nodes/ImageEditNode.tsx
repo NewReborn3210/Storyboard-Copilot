@@ -70,6 +70,7 @@ import { NodePriceBadge } from '@/features/canvas/ui/NodePriceBadge';
 import { UiButton } from '@/components/ui';
 import { useCanvasStore } from '@/stores/canvasStore';
 import { useSettingsStore } from '@/stores/settingsStore';
+import { setProviderBaseUrl } from '@/commands/ai';
 
 type ImageEditNodeProps = NodeProps & {
   id: string;
@@ -247,6 +248,7 @@ export const ImageEditNode = memo(({ id, data, selected, width, height }: ImageE
   const findNodePosition = useCanvasStore((state) => state.findNodePosition);
   const addEdge = useCanvasStore((state) => state.addEdge);
   const apiKeys = useSettingsStore((state) => state.apiKeys);
+  const providerBaseUrls = useSettingsStore((state) => state.providerBaseUrls);
   const grsaiNanoBananaProModel = useSettingsStore((state) => state.grsaiNanoBananaProModel);
   const showNodePrice = useSettingsStore((state) => state.showNodePrice);
   const priceDisplayCurrencyMode = useSettingsStore((state) => state.priceDisplayCurrencyMode);
@@ -498,6 +500,10 @@ export const ImageEditNode = memo(({ id, data, selected, width, height }: ImageE
 
     try {
       await canvasAiGateway.setApiKey(selectedModel.providerId, providerApiKey);
+      const providerBaseUrl = providerBaseUrls[selectedModel.providerId];
+      if (providerBaseUrl !== undefined) {
+        await setProviderBaseUrl(selectedModel.providerId, providerBaseUrl);
+      }
 
       let resolvedRequestAspectRatio = selectedAspectRatio.value;
       if (resolvedRequestAspectRatio === AUTO_REQUEST_ASPECT_RATIO) {

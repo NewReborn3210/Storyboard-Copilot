@@ -177,6 +177,7 @@ pub fn run() {
             image::save_image_source_to_app_debug_dir,
             image::copy_image_source_to_clipboard,
             ai_commands::set_api_key,
+            ai_commands::set_provider_base_url,
             ai_commands::submit_generate_image_job,
             ai_commands::get_generate_image_job,
             ai_commands::generate_image,

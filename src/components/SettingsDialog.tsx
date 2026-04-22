@@ -91,6 +91,7 @@ export function SettingsDialog({
   const { t, i18n } = useTranslation();
   const {
     apiKeys,
+    providerBaseUrls,
     grsaiNanoBananaProModel,
     hideProviderGuidePopover,
     downloadPresetPaths,
@@ -113,6 +114,7 @@ export function SettingsDialog({
     autoCheckAppUpdateOnLaunch,
     enableUpdateDialog,
     setProviderApiKey,
+    setProviderBaseUrl,
     setGrsaiNanoBananaProModel,
     setDownloadPresetPaths,
     setUseUploadFilenameAsNodeTitle,
@@ -146,6 +148,7 @@ export function SettingsDialog({
   const [activeCategory, setActiveCategory] = useState<SettingsCategory>(initialCategory);
   const [appVersion, setAppVersion] = useState<string>('');
   const [localApiKeys, setLocalApiKeys] = useState<Record<string, string>>(apiKeys);
+  const [localBaseUrls, setLocalBaseUrls] = useState<Record<string, string>>(providerBaseUrls);
   const [localGrsaiNanoBananaProModel, setLocalGrsaiNanoBananaProModel] = useState(
     grsaiNanoBananaProModel
   );
@@ -214,6 +217,7 @@ export function SettingsDialog({
       return;
     }
     setLocalApiKeys(apiKeys);
+    setLocalBaseUrls(providerBaseUrls);
     setLocalDownloadPresetPaths(downloadPresetPaths);
     setLocalGrsaiNanoBananaProModel(grsaiNanoBananaProModel);
     setLocalUseUploadFilenameAsNodeTitle(useUploadFilenameAsNodeTitle);
@@ -252,6 +256,9 @@ export function SettingsDialog({
   const handleSave = useCallback(() => {
     providers.forEach((provider) => {
       setProviderApiKey(provider.id, localApiKeys[provider.id] ?? '');
+      if (localBaseUrls[provider.id] !== undefined) {
+        setProviderBaseUrl(provider.id, localBaseUrls[provider.id] ?? '');
+      }
     });
     setGrsaiNanoBananaProModel(localGrsaiNanoBananaProModel);
     setDownloadPresetPaths(localDownloadPresetPaths);
@@ -276,6 +283,7 @@ export function SettingsDialog({
     onClose();
   }, [
     localApiKeys,
+    localBaseUrls,
     localDownloadPresetPaths,
     localGrsaiNanoBananaProModel,
     localUseUploadFilenameAsNodeTitle,
@@ -298,6 +306,7 @@ export function SettingsDialog({
     localEnableUpdateDialog,
     providers,
     setProviderApiKey,
+    setProviderBaseUrl,
     setGrsaiNanoBananaProModel,
     setDownloadPresetPaths,
     setUseUploadFilenameAsNodeTitle,
@@ -571,6 +580,30 @@ export function SettingsDialog({
                             )}
                           </button>
                         </div>
+
+                        {provider.id === 'google' && (
+                          <div className="mt-3">
+                            <div className="mb-1 text-xs font-medium text-text-dark">
+                              {t('settings.providerBaseUrl')}
+                            </div>
+                            <p className="mb-2 text-xs text-text-muted">
+                              {t('settings.providerBaseUrlHint')}
+                            </p>
+                            <input
+                              type="text"
+                              value={localBaseUrls['google'] ?? ''}
+                              onChange={(event) => {
+                                const nextValue = event.target.value;
+                                setLocalBaseUrls((previous) => ({
+                                  ...previous,
+                                  google: nextValue,
+                                }));
+                              }}
+                              placeholder={t('settings.providerBaseUrlPlaceholder')}
+                              className="w-full rounded border border-border-dark bg-surface-dark px-3 py-2 text-sm text-text-dark placeholder:text-text-muted"
+                            />
+                          </div>
+                        )}
 
                         {provider.id === 'grsai' && (
                           <div className="mt-3">
