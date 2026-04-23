@@ -1,5 +1,6 @@
 use base64::{engine::general_purpose::STANDARD, Engine};
 use reqwest::Client;
+use reqwest::multipart::{Form, Part};
 use serde_json::{json, Value};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -43,6 +44,57 @@ impl GoogleProvider {
         model.split_once('/').map(|(_, m)| m).unwrap_or(model)
     }
 
+    fn is_uniapi_base_url(base_url: &str) -> bool {
+        base_url.to_ascii_lowercase().contains("uniapi.io")
+    }
+
+    fn normalize_uniapi_image_model_id(model_id: &str) -> String {
+        match model_id.trim().to_ascii_lowercase().as_str() {
+            "gemini-2.5-flash-image" | "google/nano-banana" | "nano-banana" => {
+                "google/nano-banana".to_string()
+            }
+            "gemini-3.1-flash-image-preview" | "google/nano-banana-2" | "nano-banana-2" => {
+                "google/nano-banana-2".to_string()
+            }
+            "gemini-3-pro-image-preview" | "google/nano-banana-pro" | "nano-banana-pro" => {
+                "google/nano-banana-pro".to_string()
+            }
+            _ => model_id.trim().to_string(),
+        }
+    }
+
+    fn resolve_openai_compat_model_id(
+        bare_model: &str,
+        base_url: &str,
+        custom_model_id: Option<&str>,
+    ) -> String {
+        let is_uniapi = Self::is_uniapi_base_url(base_url);
+        let resolved = custom_model_id
+            .filter(|s| !s.trim().is_empty())
+            .map(|s| s.trim().to_string())
+            .unwrap_or_else(|| {
+                if is_uniapi {
+                    match bare_model {
+                        "gemini-2.0-flash" => "google/nano-banana-2".to_string(),
+                        "imagen-3" => "google/nano-banana-pro".to_string(),
+                        other => other.to_string(),
+                    }
+                } else {
+                    match bare_model {
+                        "gemini-2.0-flash" => "gemini-2.0-flash-preview-image-generation".to_string(),
+                        "imagen-3" => "imagen-3.0-generate-002".to_string(),
+                        other => other.to_string(),
+                    }
+                }
+            });
+
+        if is_uniapi {
+            Self::normalize_uniapi_image_model_id(&resolved)
+        } else {
+            resolved
+        }
+    }
+
     fn validate_openai_compat_model_id(bare_model: &str, model_id: &str) -> Result<(), AIError> {
         let normalized = model_id.trim().to_ascii_lowercase();
         if normalized.is_empty() {
@@ -51,10 +103,13 @@ impl GoogleProvider {
             ));
         }
 
-        let looks_image_capable = normalized.contains("image") || normalized.contains("imagen");
-        if bare_model == "gemini-2.0-flash" && !looks_image_capable {
+        let looks_image_capable = normalized.contains("image")
+            || normalized.contains("imagen")
+            || normalized.contains("nano-banana");
+        let requires_image_generation_model = bare_model == "gemini-2.0-flash" || bare_model == "imagen-3";
+        if requires_image_generation_model && !looks_image_capable {
             return Err(AIError::InvalidRequest(format!(
-                "当前选择的是 Google 图片生成模型，但自定义模型 ID `{}` 看起来不是图片生成模型。请改用支持图片生成的模型 ID，例如 `gemini-2.0-flash-preview-image-generation`。",
+                "当前选择的是 Google 图片生成模型，但自定义模型 ID `{}` 看起来不是图片生成模型。请改用支持图片生成的模型 ID，例如 `gemini-2.0-flash-preview-image-generation` 或 `google/nano-banana-2`。",
                 model_id
             )));
         }
@@ -148,43 +203,132 @@ impl GoogleProvider {
         None
     }
 
-    async fn generate_with_openai_compat(
-        &self,
-        request: &GenerateRequest,
-        api_key: &str,
-        base_url: &str,
-        custom_model_id: Option<&str>,
-    ) -> Result<String, AIError> {
-        let bare = Self::bare_model(&request.model);
-        // Use custom model id if set; otherwise map our model names to proxy model ids
-        let model_id = custom_model_id.filter(|s| !s.is_empty()).unwrap_or_else(|| match bare {
-            "gemini-2.0-flash" => "gemini-2.0-flash-preview-image-generation",
-            "imagen-3" => "imagen-3.0-generate-002",
-            other => other,
-        });
-        Self::validate_openai_compat_model_id(bare, model_id)?;
-        let size = Self::aspect_ratio_to_size(&request.aspect_ratio);
-        let base = base_url.trim_end_matches('/');
-        let base = base.strip_suffix("/v1").unwrap_or(base);
-        let endpoint = format!("{}/v1/images/generations", base);
+    fn source_to_image_bytes(source: &str, fallback_index: usize) -> Option<(String, Vec<u8>, String)> {
+        let trimmed = source.trim();
+        if trimmed.is_empty() {
+            return None;
+        }
 
-        // Do NOT include response_format — some proxies (e.g. OpenRouter) forward it
-        // to the native API which may reject it with 500. Let the proxy default to URL.
-        let body = serde_json::json!({
+        if let Some((meta, payload)) = trimmed.split_once(',') {
+            if meta.starts_with("data:") && meta.ends_with(";base64") && !payload.is_empty() {
+                let mime = meta
+                    .trim_start_matches("data:")
+                    .trim_end_matches(";base64")
+                    .to_string();
+                if let Ok(bytes) = STANDARD.decode(payload) {
+                    return Some((mime, bytes, format!("reference_{}.png", fallback_index + 1)));
+                }
+            }
+        }
+
+        let likely_base64 = trimmed.len() > 256
+            && trimmed
+                .chars()
+                .all(|ch| ch.is_ascii_alphanumeric() || ch == '+' || ch == '/' || ch == '=');
+        if likely_base64 {
+            if let Ok(bytes) = STANDARD.decode(trimmed) {
+                return Some((
+                    "image/png".to_string(),
+                    bytes,
+                    format!("reference_{}.png", fallback_index + 1),
+                ));
+            }
+        }
+
+        if trimmed.starts_with("http://") || trimmed.starts_with("https://") {
+            return None;
+        }
+
+        let path = if trimmed.starts_with("file://") {
+            PathBuf::from(Self::decode_file_url_path(trimmed))
+        } else {
+            PathBuf::from(trimmed)
+        };
+        if let Ok(bytes) = std::fs::read(&path) {
+            let mime = path
+                .extension()
+                .and_then(|ext| ext.to_str())
+                .map(|ext| match ext.to_lowercase().as_str() {
+                    "jpg" | "jpeg" => "image/jpeg",
+                    "png" => "image/png",
+                    "webp" => "image/webp",
+                    "gif" => "image/gif",
+                    _ => "image/png",
+                })
+                .unwrap_or("image/png")
+                .to_string();
+            let file_name = path
+                .file_name()
+                .and_then(|name| name.to_str())
+                .map(|name| name.to_string())
+                .unwrap_or_else(|| format!("reference_{}.png", fallback_index + 1));
+            return Some((mime, bytes, file_name));
+        }
+
+        None
+    }
+
+    fn parse_openai_compat_image_response(resp_body: &Value) -> Result<String, AIError> {
+        if let Some(b64) = resp_body.pointer("/data/0/b64_json").and_then(|v| v.as_str()) {
+            return Ok(format!("data:image/png;base64,{}", b64));
+        }
+
+        if let Some(url) = resp_body.pointer("/data/0/url").and_then(|v| v.as_str()) {
+            return Ok(url.to_string());
+        }
+
+        Err(AIError::Provider(format!(
+            "No image found in OpenAI-compat response: {}",
+            resp_body
+        )))
+    }
+
+    fn is_channel_not_implemented_error(status: reqwest::StatusCode, error_text: &str) -> bool {
+        if status != reqwest::StatusCode::SERVICE_UNAVAILABLE {
+            return false;
+        }
+
+        let lowered = error_text.to_ascii_lowercase();
+        lowered.contains("channel not implemented") || lowered.contains("\"channel_error\"")
+    }
+
+    fn build_reference_data_urls(refs: &[String]) -> Vec<String> {
+        refs.iter()
+            .enumerate()
+            .filter_map(|(index, source)| {
+                Self::source_to_image_bytes(source, index).map(|(mime, bytes, _)| {
+                    format!("data:{};base64,{}", mime, STANDARD.encode(bytes))
+                })
+            })
+            .collect()
+    }
+
+    async fn request_openai_compat_generations(
+        &self,
+        endpoint: &str,
+        api_key: &str,
+        model_id: &str,
+        prompt: &str,
+        size: &str,
+        refs: &[String],
+    ) -> Result<Value, AIError> {
+        let mut body = serde_json::json!({
             "model": model_id,
-            "prompt": request.prompt,
+            "prompt": prompt,
             "n": 1,
             "size": size,
         });
 
-        info!(
-            "[Google OpenAI-compat] endpoint={}, model={}, size={}",
-            endpoint, model_id, size
-        );
+        if !refs.is_empty() {
+            let reference_data_urls = Self::build_reference_data_urls(refs);
+            if !reference_data_urls.is_empty() {
+                body["image_urls"] = json!(reference_data_urls);
+            }
+        }
 
         let response = self
             .client
-            .post(&endpoint)
+            .post(endpoint)
             .header("Authorization", format!("Bearer {}", api_key))
             .header("Content-Type", "application/json")
             .json(&body)
@@ -200,32 +344,159 @@ impl GoogleProvider {
             )));
         }
 
-        let resp_body = response.json::<serde_json::Value>().await?;
+        Ok(response.json::<serde_json::Value>().await?)
+    }
 
-        // Handle both b64_json and url response formats
-        if let Some(b64) = resp_body.pointer("/data/0/b64_json").and_then(|v| v.as_str()) {
-            return Ok(format!("data:image/png;base64,{}", b64));
-        }
-
-        if let Some(url) = resp_body.pointer("/data/0/url").and_then(|v| v.as_str()) {
-            // Download and convert to base64
-            let img_response = self.client.get(url).send().await?;
+    async fn normalize_openai_compat_image_output(&self, resp_body: &Value) -> Result<String, AIError> {
+        let parsed = Self::parse_openai_compat_image_response(resp_body)?;
+        if parsed.starts_with("http://") || parsed.starts_with("https://") {
+            let img_response = self.client.get(&parsed).send().await?;
             let content_type = img_response
                 .headers()
                 .get("content-type")
                 .and_then(|v| v.to_str().ok())
                 .unwrap_or("image/png")
                 .to_string();
-            let mime = content_type.split(';').next().unwrap_or("image/png").trim().to_string();
+            let mime = content_type
+                .split(';')
+                .next()
+                .unwrap_or("image/png")
+                .trim()
+                .to_string();
             let bytes = img_response.bytes().await?;
             let b64 = STANDARD.encode(&bytes);
             return Ok(format!("data:{};base64,{}", mime, b64));
         }
 
-        Err(AIError::Provider(format!(
-            "No image found in OpenAI-compat response: {}",
-            resp_body
-        )))
+        Ok(parsed)
+    }
+
+    async fn generate_with_openai_compat(
+        &self,
+        request: &GenerateRequest,
+        api_key: &str,
+        base_url: &str,
+        custom_model_id: Option<&str>,
+    ) -> Result<String, AIError> {
+        let bare = Self::bare_model(&request.model);
+        // Resolve custom/default model id and normalize known Uni API aliases.
+        let model_id = Self::resolve_openai_compat_model_id(bare, base_url, custom_model_id);
+        Self::validate_openai_compat_model_id(bare, &model_id)?;
+        let size = Self::aspect_ratio_to_size(&request.aspect_ratio);
+        let base = base_url.trim_end_matches('/');
+        let base = base.strip_suffix("/v1").unwrap_or(base);
+        let refs: Vec<String> = request
+            .reference_images
+            .as_ref()
+            .map(|images| {
+                images
+                    .iter()
+                    .filter(|value| !value.trim().is_empty())
+                    .cloned()
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
+        let use_edits = !refs.is_empty();
+        let endpoint = if use_edits {
+            format!("{}/v1/images/edits", base)
+        } else {
+            format!("{}/v1/images/generations", base)
+        };
+        let generations_endpoint = format!("{}/v1/images/generations", base);
+
+        info!(
+            "[Google OpenAI-compat] endpoint={}, model={}, size={}, refs={}",
+            endpoint,
+            model_id,
+            size,
+            refs.len()
+        );
+
+        let response = if use_edits {
+            let mut form = Form::new()
+                .text("model", model_id.clone())
+                .text("prompt", request.prompt.clone())
+                .text("n", "1".to_string())
+                .text("size", size.to_string());
+            let mut attached_count = 0usize;
+
+            for (index, source) in refs.iter().enumerate() {
+                if let Some((mime, bytes, file_name)) = Self::source_to_image_bytes(source, index) {
+                    let part = Part::bytes(bytes)
+                        .file_name(file_name)
+                        .mime_str(&mime)
+                        .map_err(|e| AIError::Provider(format!("Invalid image mime type `{}`: {}", mime, e)))?;
+                    form = form.part("image", part);
+                    attached_count += 1;
+                }
+            }
+
+            if attached_count == 0 {
+                return Err(AIError::InvalidRequest(
+                    "已传入参考图，但未能解析为有效图片内容，请检查图片来源。".to_string(),
+                ));
+            }
+
+            let response = self.client
+                .post(&endpoint)
+                .header("Authorization", format!("Bearer {}", api_key))
+                .multipart(form)
+                .send()
+                .await?;
+
+            if !response.status().is_success() {
+                let status = response.status();
+                let error_text = response.text().await.unwrap_or_default();
+                if Self::is_channel_not_implemented_error(status, &error_text) {
+                    info!(
+                        "[Google OpenAI-compat] edits channel unavailable, fallback to generations with reference payload"
+                    );
+                    let fallback_body = self
+                        .request_openai_compat_generations(
+                            &generations_endpoint,
+                            api_key,
+                            &model_id,
+                            &request.prompt,
+                            size,
+                            &refs,
+                        )
+                        .await?;
+                    return self.normalize_openai_compat_image_output(&fallback_body).await;
+                }
+
+                return Err(AIError::Provider(format!(
+                    "OpenAI-compat API request failed {}: {}",
+                    status, error_text
+                )));
+            }
+
+            response
+        } else {
+            let resp_body = self
+                .request_openai_compat_generations(
+                    &endpoint,
+                    api_key,
+                    &model_id,
+                    &request.prompt,
+                    size,
+                    &refs,
+                )
+                .await?;
+            return self.normalize_openai_compat_image_output(&resp_body).await;
+        };
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let error_text = response.text().await.unwrap_or_default();
+            return Err(AIError::Provider(format!(
+                "OpenAI-compat API request failed {}: {}",
+                status, error_text
+            )));
+        }
+
+        let resp_body = response.json::<serde_json::Value>().await?;
+
+        self.normalize_openai_compat_image_output(&resp_body).await
     }
 
     async fn generate_with_gemini_flash(
