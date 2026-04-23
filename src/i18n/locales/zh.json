@@ -212,7 +212,7 @@
     "providerBaseUrlHint": "填写 OpenAI 兼容代理的地址（如 https://api.example.com），选择 OpenAI 兼容协议时必填。",
     "providerBaseUrlPlaceholder": "https://your-proxy.com",
     "providerCustomModelId": "自定义模型 ID",
-    "providerCustomModelIdHint": "填写代理服务实际使用的模型标识符，留空则使用默认映射。",
+    "providerCustomModelIdHint": "填写代理服务实际使用的模型标识符，留空则使用默认映射。用于图片生成时，请填写支持图片生成的模型 ID，例如包含 image-generation 或 imagen 的模型。",
     "providerCustomModelIdPlaceholder": "例如：gemini-2.0-flash-preview-image-generation",
     "providerApiProtocol": "API 协议",
     "apiProtocolOfficial": "官方 API",

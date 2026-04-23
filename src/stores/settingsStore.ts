@@ -6,6 +6,8 @@ import {
   type GrsaiCreditTierId,
   type PriceDisplayCurrencyMode,
 } from '@/features/canvas/pricing/types';
+import { GOOGLE_GEMINI_FLASH_MODEL_ID } from '@/features/canvas/models/image/google/gemini20Flash';
+import { GOOGLE_IMAGEN3_MODEL_ID } from '@/features/canvas/models/image/google/imagen3';
 
 export type UiRadiusPreset = 'compact' | 'default' | 'large';
 export type ThemeTonePreset = 'neutral' | 'warm' | 'cool';
@@ -150,6 +152,47 @@ function normalizeApiKeys(input: ProviderApiKeys | null | undefined): ProviderAp
   }, {});
 }
 
+function normalizeProviderCustomModelIds(
+  input: ProviderCustomModelIds | null | undefined
+): ProviderCustomModelIds {
+  if (!input) {
+    return {};
+  }
+
+  return Object.entries(input).reduce<ProviderCustomModelIds>((acc, [modelKey, modelId]) => {
+    const normalizedModelKey = modelKey.trim();
+    if (!normalizedModelKey) {
+      return acc;
+    }
+
+    acc[normalizedModelKey] = modelId.trim();
+    return acc;
+  }, {});
+}
+
+function migrateGoogleCustomModelIds(
+  input: ProviderCustomModelIds | null | undefined
+): ProviderCustomModelIds {
+  const normalized = normalizeProviderCustomModelIds(input);
+  const legacyGoogleValue = normalized.google;
+  if (!legacyGoogleValue) {
+    return normalized;
+  }
+
+  const migrated = { ...normalized };
+  delete migrated.google;
+
+  const lowered = legacyGoogleValue.toLowerCase();
+  if (lowered.includes('imagen')) {
+    migrated[GOOGLE_IMAGEN3_MODEL_ID] = migrated[GOOGLE_IMAGEN3_MODEL_ID] ?? legacyGoogleValue;
+  } else {
+    migrated[GOOGLE_GEMINI_FLASH_MODEL_ID] =
+      migrated[GOOGLE_GEMINI_FLASH_MODEL_ID] ?? legacyGoogleValue;
+  }
+
+  return migrated;
+}
+
 export function hasConfiguredApiKey(apiKeys: ProviderApiKeys): boolean {
   return getConfiguredApiKeyCount(apiKeys) > 0;
 }
@@ -269,7 +312,7 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'settings-storage',
-      version: 10,
+      version: 11,
       onRehydrateStorage: () => {
         return (_state, error) => {
           if (error) {
@@ -282,6 +325,7 @@ export const useSettingsStore = create<SettingsState>()(
         const state = (persistedState ?? {}) as {
           apiKey?: string;
           apiKeys?: ProviderApiKeys;
+          providerCustomModelIds?: ProviderCustomModelIds;
           ignoreAtTagWhenCopyingAndGenerating?: boolean;
           grsaiNanoBananaProModel?: string;
           hideProviderGuidePopover?: boolean;
@@ -299,6 +343,9 @@ export const useSettingsStore = create<SettingsState>()(
         };
 
         const migratedApiKeys = normalizeApiKeys(state.apiKeys);
+        const migratedProviderCustomModelIds = migrateGoogleCustomModelIds(
+          state.providerCustomModelIds
+        );
         const ignoreAtTagWhenCopyingAndGenerating =
           state.ignoreAtTagWhenCopyingAndGenerating ?? true;
         if (Object.keys(migratedApiKeys).length > 0) {
@@ -306,6 +353,7 @@ export const useSettingsStore = create<SettingsState>()(
             ...(persistedState as object),
             isHydrated: true,
             apiKeys: migratedApiKeys,
+            providerCustomModelIds: migratedProviderCustomModelIds,
             ignoreAtTagWhenCopyingAndGenerating,
             grsaiNanoBananaProModel: normalizeGrsaiNanoBananaProModel(
               state.grsaiNanoBananaProModel
@@ -333,6 +381,7 @@ export const useSettingsStore = create<SettingsState>()(
           ...(persistedState as object),
           isHydrated: true,
           apiKeys: state.apiKey ? { ppio: normalizeApiKey(state.apiKey) } : {},
+          providerCustomModelIds: migratedProviderCustomModelIds,
           ignoreAtTagWhenCopyingAndGenerating,
           grsaiNanoBananaProModel: normalizeGrsaiNanoBananaProModel(
             state.grsaiNanoBananaProModel

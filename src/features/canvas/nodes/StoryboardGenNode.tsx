@@ -1112,7 +1112,7 @@ export const StoryboardGenNode = memo(({ id, data, selected, width, height }: St
       if (providerApiProtocol !== undefined) {
         await setProviderApiProtocol(selectedModel.providerId, providerApiProtocol);
       }
-      const providerCustomModelId = providerCustomModelIds[selectedModel.providerId];
+      const providerCustomModelId = providerCustomModelIds[selectedModel.id];
       if (providerCustomModelId !== undefined) {
         await setProviderCustomModelId(selectedModel.providerId, providerCustomModelId);
       }

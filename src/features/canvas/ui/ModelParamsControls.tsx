@@ -192,13 +192,13 @@ export const ModelParamsControls = memo(({
     [selectedModel.providerId]
   );
   const selectedModelName = useMemo(() => {
-    const customModelId = providerCustomModelIds[selectedModel.providerId];
+    const customModelId = providerCustomModelIds[selectedModel.id];
     const isOpenAICompat = (providerApiProtocols[selectedModel.providerId] ?? 'official') === 'openai-compatible';
     if (isOpenAICompat && customModelId && customModelId.trim().length > 0) {
       return customModelId.trim();
     }
     return selectedModel.displayName.replace(/\s*\([^)]*\)\s*$/u, '').trim() || selectedModel.displayName;
-  }, [selectedModel.providerId, selectedModel.displayName, providerApiProtocols, providerCustomModelIds]);
+  }, [selectedModel.id, selectedModel.providerId, selectedModel.displayName, providerApiProtocols, providerCustomModelIds]);
   const selectedProviderName = selectedProvider.label || selectedProvider.name;
   const providerOptions = useMemo(() => {
     const providerOrder = ['kie', 'ppio', 'fal', 'grsai'];

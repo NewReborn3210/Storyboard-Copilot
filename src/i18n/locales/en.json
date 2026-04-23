@@ -212,7 +212,7 @@
     "providerBaseUrlHint": "Enter the OpenAI-compatible proxy address (e.g. https://api.example.com). Required when using the OpenAI-compatible protocol.",
     "providerBaseUrlPlaceholder": "https://your-proxy.com",
     "providerCustomModelId": "Custom Model ID",
-    "providerCustomModelIdHint": "Enter the model identifier used by your proxy. Leave blank to use the default mapping.",
+    "providerCustomModelIdHint": "Enter the model identifier used by your proxy. Leave blank to use the default mapping. For image generation, use an image-capable model ID, such as one containing image-generation or imagen.",
     "providerCustomModelIdPlaceholder": "e.g. gemini-2.0-flash-preview-image-generation",
     "providerApiProtocol": "API Protocol",
     "apiProtocolOfficial": "Official API",

@@ -12,6 +12,8 @@ import { UiCheckbox, UiSelect } from '@/components/ui';
 import { UI_CONTENT_OVERLAY_INSET_CLASS, UI_DIALOG_TRANSITION_MS } from '@/components/ui/motion';
 import { useDialogTransition } from '@/components/ui/useDialogTransition';
 import { listModelProviders } from '@/features/canvas/models';
+import { GOOGLE_GEMINI_FLASH_MODEL_ID } from '@/features/canvas/models/image/google/gemini20Flash';
+import { GOOGLE_IMAGEN3_MODEL_ID } from '@/features/canvas/models/image/google/imagen3';
 import { GRSAI_NANO_BANANA_PRO_MODEL_OPTIONS } from '@/features/canvas/models/providers/grsai';
 import { GRSAI_CREDIT_TIERS } from '@/features/canvas/pricing/types';
 import providerGuideMarkdown from '../../docs/settings/provider-guide.md?raw';
@@ -38,6 +40,39 @@ const PROVIDER_REGISTER_URLS: Record<string, string> = {
   fal: 'https://fal.ai',
   google: 'https://aistudio.google.com',
 };
+
+const GOOGLE_CUSTOM_MODEL_FIELDS = [
+  {
+    key: GOOGLE_GEMINI_FLASH_MODEL_ID,
+    label: 'Gemini 2.0 Flash',
+    placeholder: 'e.g. gemini-2.0-flash-preview-image-generation',
+  },
+  {
+    key: GOOGLE_IMAGEN3_MODEL_ID,
+    label: 'Imagen 3',
+    placeholder: 'e.g. imagen-3.0-generate-002',
+  },
+] as const;
+
+function normalizeGoogleCustomModelIds(localCustomModelIds: Record<string, string>): Record<string, string> {
+  const normalized = { ...localCustomModelIds };
+  const legacyGoogleValue = normalized.google?.trim();
+  delete normalized.google;
+
+  if (!legacyGoogleValue) {
+    return normalized;
+  }
+
+  const lowered = legacyGoogleValue.toLowerCase();
+  if (lowered.includes('imagen')) {
+    normalized[GOOGLE_IMAGEN3_MODEL_ID] = normalized[GOOGLE_IMAGEN3_MODEL_ID] ?? legacyGoogleValue;
+  } else {
+    normalized[GOOGLE_GEMINI_FLASH_MODEL_ID] =
+      normalized[GOOGLE_GEMINI_FLASH_MODEL_ID] ?? legacyGoogleValue;
+  }
+
+  return normalized;
+}
 
 const PROVIDER_GET_KEY_URLS: Record<string, string> = {
   ppio: 'https://ppio.com/settings/key-management',
@@ -225,7 +260,7 @@ export function SettingsDialog({
     setLocalApiKeys(apiKeys);
     setLocalBaseUrls(providerBaseUrls);
     setLocalApiProtocols(providerApiProtocols);
-    setLocalCustomModelIds(providerCustomModelIds);
+    setLocalCustomModelIds(normalizeGoogleCustomModelIds(providerCustomModelIds));
     setLocalDownloadPresetPaths(downloadPresetPaths);
     setLocalGrsaiNanoBananaProModel(grsaiNanoBananaProModel);
     setLocalUseUploadFilenameAsNodeTitle(useUploadFilenameAsNodeTitle);
@@ -270,9 +305,9 @@ export function SettingsDialog({
       if (localApiProtocols[provider.id] !== undefined) {
         setProviderApiProtocol(provider.id, localApiProtocols[provider.id] ?? '');
       }
-      if (localCustomModelIds[provider.id] !== undefined) {
-        setProviderCustomModelId(provider.id, localCustomModelIds[provider.id] ?? '');
-      }
+    });
+    Object.entries(normalizeGoogleCustomModelIds(localCustomModelIds)).forEach(([modelKey, modelId]) => {
+      setProviderCustomModelId(modelKey, modelId ?? '');
     });
     setGrsaiNanoBananaProModel(localGrsaiNanoBananaProModel);
     setDownloadPresetPaths(localDownloadPresetPaths);
@@ -653,19 +688,28 @@ export function SettingsDialog({
                                 <p className="mb-2 text-xs text-text-muted">
                                   {t('settings.providerCustomModelIdHint')}
                                 </p>
-                                <input
-                                  type="text"
-                                  value={localCustomModelIds['google'] ?? ''}
-                                  onChange={(event) => {
-                                    const nextValue = event.target.value;
-                                    setLocalCustomModelIds((previous) => ({
-                                      ...previous,
-                                      google: nextValue,
-                                    }));
-                                  }}
-                                  placeholder={t('settings.providerCustomModelIdPlaceholder')}
-                                  className="w-full rounded border border-border-dark bg-surface-dark px-3 py-2 text-sm text-text-dark placeholder:text-text-muted"
-                                />
+                                <div className="space-y-3">
+                                  {GOOGLE_CUSTOM_MODEL_FIELDS.map((field) => (
+                                    <div key={field.key}>
+                                      <div className="mb-1 text-xs font-medium text-text-dark/80">
+                                        {field.label}
+                                      </div>
+                                      <input
+                                        type="text"
+                                        value={localCustomModelIds[field.key] ?? ''}
+                                        onChange={(event) => {
+                                          const nextValue = event.target.value;
+                                          setLocalCustomModelIds((previous) => ({
+                                            ...previous,
+                                            [field.key]: nextValue,
+                                          }));
+                                        }}
+                                        placeholder={field.placeholder}
+                                        className="w-full rounded border border-border-dark bg-surface-dark px-3 py-2 text-sm text-text-dark placeholder:text-text-muted"
+                                      />
+                                    </div>
+                                  ))}
+                                </div>
                               </div>
                             )}
                           </div>

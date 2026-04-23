@@ -43,6 +43,25 @@ impl GoogleProvider {
         model.split_once('/').map(|(_, m)| m).unwrap_or(model)
     }
 
+    fn validate_openai_compat_model_id(bare_model: &str, model_id: &str) -> Result<(), AIError> {
+        let normalized = model_id.trim().to_ascii_lowercase();
+        if normalized.is_empty() {
+            return Err(AIError::InvalidRequest(
+                "Google OpenAI 兼容模式的自定义模型 ID 不能为空".to_string(),
+            ));
+        }
+
+        let looks_image_capable = normalized.contains("image") || normalized.contains("imagen");
+        if bare_model == "gemini-2.0-flash" && !looks_image_capable {
+            return Err(AIError::InvalidRequest(format!(
+                "当前选择的是 Google 图片生成模型，但自定义模型 ID `{}` 看起来不是图片生成模型。请改用支持图片生成的模型 ID，例如 `gemini-2.0-flash-preview-image-generation`。",
+                model_id
+            )));
+        }
+
+        Ok(())
+    }
+
     fn aspect_ratio_to_size(ratio: &str) -> &'static str {
         match ratio {
             "9:16" => "1024x1792",
@@ -143,6 +162,7 @@ impl GoogleProvider {
             "imagen-3" => "imagen-3.0-generate-002",
             other => other,
         });
+        Self::validate_openai_compat_model_id(bare, model_id)?;
         let size = Self::aspect_ratio_to_size(&request.aspect_ratio);
         let base = base_url.trim_end_matches('/');
         let base = base.strip_suffix("/v1").unwrap_or(base);
